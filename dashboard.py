@@ -2,16 +2,39 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import ta
-from datetime import datetime
+from datetime import time as dtime
 import pytz
+import sys
+import os
+import time
 
 st.set_page_config(layout="wide")
 st.title("🚀 PASSIVE INTRADAY ALGO - V18.8 (PER-STOCK % ENGINE)")
 
-# 🕒 லைவ் டைம் டிக்கர்
-IST = pytz.timezone('Asia/Kolkata')
-current_time = datetime.now(IST).strftime('%Y-%m-%d %I:%M:%S %p')
+# 🕒 லைவ் டைம் டிரேக்கர் செட்டப் (புல்லட் ப்ரூஃப் தீர்வு ப்ரோ!)
+import datetime as global_dt
+from datetime import time as dtime
+import pytz
+
+ist = pytz.timezone('Asia/Kolkata')
+now = global_dt.datetime.now(ist).time()
+
+# 1. காலையில 9:15-க்கு முன்னாடி அல்கோ காத்திருக்க
+if now < dtime(9, 15):
+    st.info("🕒 மார்க்கெட் இன்னும் ஓபன் ஆகவில்லை. 9:15 AM வரை அல்கோ காத்திருக்கிறது...")
+    time.sleep(30)
+    st.rerun()
+
+# 2. லைவ் டிக்கர் நேரம் கச்சிதமாகக் காட்ட
+current_time = global_dt.datetime.now(ist).strftime('%Y-%m-%d %I:%M:%S %p')
 st.markdown(f"### 🕒 **கடைசியாக புதுப்பிக்கப்பட்ட நேரம் (Live Ticker):** `{current_time}`")
+
+# 3. மதியம் 3:15 மணி ஆன உடனே ஆட்டோ க்ளோஸ் செய்ய
+if now >= dtime(15, 15):
+    st.warning("🚨 மதியம் 3:15 ஆகிவிட்டது! அல்கோ பொசிஷன்களை க்ளோஸ் செய்கிறது...")
+    st.error("🛑 சர்வர் தானாக ஆஃப் ஆகிறது. குட் பை ப்ரோ!")
+    time.sleep(5)
+    os._exit(0)
 
 # 🔒 டைனமிக் லிமிட்ஸ்
 MIN_TARGET = 0.6
