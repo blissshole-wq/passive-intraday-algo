@@ -21,10 +21,13 @@ DB_FILE = "positions_db.csv"
 FUND_FILE = "fund_tracker.csv"
 
 def load_positions():
-    if os.path.exists(DB_FILE):
+    import os
+    if not os.path.exists(DB_FILE) or os.stat(DB_FILE).st_size == 0:
+        return []
+    try:
         return pd.read_csv(DB_FILE).to_dict(orient="records")
-    return []
-
+    except pd.errors.EmptyDataError:
+        return []  
 def save_positions(positions_list):
     pd.DataFrame(positions_list).to_csv(DB_FILE, index=False)
 
