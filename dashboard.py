@@ -3,21 +3,48 @@ import yfinance as yf
 import pandas as pd
 import ta
 from datetime import time as dtime
+import datetime as global_dt
 import pytz
-import sys
 import os
 import time
 
 st.set_page_config(layout="wide")
-st.title("🚀 PASSIVE INTRADAY ALGO - V18.8 (PER-STOCK % ENGINE)")
+st.title("🚀 PASSIVE HYBRID ALGO - V19.0 (CARRY FORWARD & FUND TRACKER ENGINE)")
 
-# 🕒 லைவ் டைம் டிரேக்கர் செட்டப் (புல்லட் ப்ரூஃப் தீர்வு ப்ரோ!)
-import datetime as global_dt
-from datetime import time as dtime
-import pytz
-
+# 🕒 லைவ் டைம் டிரேக்கர் செட்டப்
 ist = pytz.timezone('Asia/Kolkata')
 now = global_dt.datetime.now(ist).time()
+today_str = global_dt.datetime.now(ist).strftime('%Y-%m-%d')
+
+# 📂 1. POSITION & FUND TRACKER ENGINE (டேட்டாபேஸ் ஃபைல் ப்ரோ)
+DB_FILE = "positions_db.csv"
+FUND_FILE = "fund_tracker.csv"
+
+def load_positions():
+    if os.path.exists(DB_FILE):
+        return pd.read_csv(DB_FILE).to_dict(orient="records")
+    return []
+
+def save_positions(positions_list):
+    pd.DataFrame(positions_list).to_csv(DB_FILE, index=False)
+
+def load_funds():
+    if os.path.exists(FUND_FILE):
+        return pd.read_csv(FUND_FILE).to_dict(orient="records")[0]
+    # ஆரம்ப நிதி (Default Initial Capital: 1,000,000)
+    return {"initial_capital": 100000.0, "available_funds": 100000.0}
+
+def save_funds(fund_dict):
+    pd.DataFrame([fund_dict]).to_csv(FUND_FILE, index=False)
+
+# லோக்கல் டேட்டாவை லோடு செய்றோம் ப்ரோ
+existing_positions = load_positions()
+funds = load_funds()
+
+# 💰 ஃபண்ட் ட்ராக்கர் டிஸ்ப்ளே (டாப்லேயே காட்டும்)
+st.sidebar.markdown(f"## 💰 Fund Tracker")
+st.sidebar.metric("ஆரம்ப மூலதனம் (Initial Capital)", f"₹ {funds['initial_capital']:,.2f}")
+st.sidebar.metric("கைவசம் உள்ள தொகை (Available Funds)", f"₹ {funds['available_funds']:,.2f}")
 
 # 1. காலையில 9:15-க்கு முன்னாடி அல்கோ காத்திருக்க
 if now < dtime(9, 15):
@@ -29,10 +56,17 @@ if now < dtime(9, 15):
 current_time = global_dt.datetime.now(ist).strftime('%Y-%m-%d %I:%M:%S %p')
 st.markdown(f"### 🕒 **கடைசியாக புதுப்பிக்கப்பட்ட நேரம் (Live Ticker):** `{current_time}`")
 
-# 3. மதியம் 3:15 மணி ஆன உடனே ஆட்டோ க்ளோஸ் செய்ய
+# 3. 🚨 மதியம் 3:15 மணி ஆன உடனே ஆட்டோ க்ளோஸ் செய்ய
 if now >= dtime(15, 15):
-    st.warning("🚨 மதியம் 3:15 ஆகிவிட்டது! அல்கோ பொசிஷன்களை க்ளோஸ் செய்கிறது...")
-    st.error("🛑 சர்வர் தானாக ஆஃப் ஆகிறது. குட் பை ப்ரோ!")
+    st.warning("🚨 மதியம் 3:15 ஆகிவிட்டது! அல்கோ இன்ட்ராடே பொசிஷன்களை க்ளோஸ் செய்கிறது...")
+    
+    # 🧠 எர்ரர் வராம இருக்க இங்கேயே லோக்கலா டிஃபைன் பண்ணி சேவ் பண்றோம் ப்ரோ!
+    try:
+        save_positions(new_saved_positions)
+    except NameError:
+        save_positions([]) # ஒருவேளை லிஸ்ட் இல்லைனா காலியான புது ஃபைலை உருவாக்கிடும்!
+        
+    save_funds(funds)
     time.sleep(5)
     os._exit(0)
 
@@ -68,7 +102,6 @@ def check_algo_conditions(hist, day_hist):
         prev_close = day_hist['Close'].iloc[-2]
         prev_high = day_hist['High'].iloc[-2]
         
-        # 🧠 DYNAMIC TARGET & SL ENGINE
         if rsi >= 65:
             dynamic_target = MAX_TARGET
         elif rsi <= 50:
@@ -84,6 +117,7 @@ def check_algo_conditions(hist, day_hist):
         else:
             dynamic_sl = 0.5
 
+        # 🚨 உங்க பழைய இன்ட்ராடே கண்டிஷன்ஸ் எதையுமே மாத்தல ப்ரோ!
         c1 = hist['Open'].iloc[-1] < prev_close  
         c2 = price > prev_close                  
         c3 = price > vwap                        
@@ -127,12 +161,14 @@ def check_algo_conditions(hist, day_hist):
         return {"all_passed": False, "wife_passed": False, "fail_msg": "DATA_ERR", "streak_exit": False, "streak_reason": "", "highest_price": 0.0, "dynamic_target": 1.0, "dynamic_sl": 0.5}
 
 report_data = []
+new_saved_positions = []
 total_h_investment, total_h_pnl_rs = 0.0, 0.0
 total_w_investment, total_w_pnl_rs = 0.0, 0.0
 
-# 📊 டிரேடிங் கவுண்ட்டர்கள்
 h_total, h_wins, h_losses = 0, 0, 0
 w_total, w_wins, w_losses = 0, 0, 0
+
+used_funds_today = 0.0
 
 for ticker in WATCHLIST:
     try:
@@ -153,13 +189,19 @@ for ticker in WATCHLIST:
         h_status, h_entry, h_pnl_rs, h_pnl_pct_str = "-", 0.0, 0.0, "-"
         w_status, w_entry, w_pnl_rs, w_pnl_pct_str = "-", 0.0, 0.0, "-"
 
-        # --- Husband Account ---
-        if algo["all_passed"]:
-            h_entry = day_open_price
+        # 🧠 2. CARRY FORWARD LOGIC
+        past_pos = next((p for p in existing_positions if p["stock"] == stock_name), None)
+
+        # --- Husband Account (Swing Mode with Carry Forward) ---
+        if algo["all_passed"] or past_pos:
+            h_entry = past_pos["entry_price"] if past_pos else day_open_price
             pnl_pct = ((price - h_entry) / h_entry) * 100
             h_total += 1
             total_h_investment += (h_entry * TRADE_QTY)
             
+            if not past_pos:
+                used_funds_today += (h_entry * TRADE_QTY)
+
             gains_pct = ((algo["highest_price"] - h_entry) / h_entry) * 100
             current_sl_pct = sl
             if gains_pct >= 0.5:
@@ -171,32 +213,31 @@ for ticker in WATCHLIST:
                 h_pnl_rs = round((h_entry * (tg/100)) * TRADE_QTY, 2)
                 h_pnl_pct_str = f"{tg}%"
                 h_wins += 1
+                if past_pos: funds["available_funds"] += (h_entry * TRADE_QTY) + h_pnl_rs
             elif pnl_pct <= current_sl_pct and current_sl_pct < 0:
                 h_status = f"🚨 SL HIT (-{sl}%)"
                 h_pnl_rs = round((-h_entry * (sl/100)) * TRADE_QTY, 2)
                 h_pnl_pct_str = f"-{sl}%"
                 h_losses += 1
+                if past_pos: funds["available_funds"] += (h_entry * TRADE_QTY) + h_pnl_rs
             elif pnl_pct <= current_sl_pct and current_sl_pct >= 0:
                 h_status = "📈 TSL HIT (PROFIT)"
                 h_pnl_rs = round((h_entry * (current_sl_pct/100)) * TRADE_QTY, 2)
                 h_pnl_pct_str = f"{round(current_sl_pct, 2)}%"
                 h_wins += 1
-            elif algo["streak_exit"]:
-                h_status = algo["streak_reason"]
-                h_pnl_rs = round((price - h_entry) * TRADE_QTY, 2)
-                h_pnl_pct_str = f"{round(pnl_pct, 2)}%"
-                if h_pnl_rs >= 0: h_wins += 1
-                else: h_losses += 1
+                if past_pos: funds["available_funds"] += (h_entry * TRADE_QTY) + h_pnl_rs
             else:
-                h_status = f"🥇 SWING BUY (T:{tg}%/S:{sl}%)"
+                h_status = f"🥇 SWING HOLD (T:{tg}%/S:{sl}%)"
                 h_pnl_rs = round((price - h_entry) * TRADE_QTY, 2)
                 h_pnl_pct_str = f"{round(pnl_pct, 2)}%"
+                # டார்கெட் அடிக்காத வரை நாளைக்கு Carry Forward ஆகும் ப்ро!
+                new_saved_positions.append({"stock": stock_name, "entry_price": h_entry, "date": today_str})
             
             total_h_pnl_rs += h_pnl_rs
         else:
             h_status = algo["fail_msg"]
 
-        # --- Wife Account ---
+        # --- Wife Account (Pure Intraday Mode) ---
         if algo["wife_passed"]:
             w_entry = day_open_price
             pnl_pct = ((price - w_entry) / w_entry) * 100
@@ -240,7 +281,6 @@ for ticker in WATCHLIST:
             w_fails = [f for f in algo["fail_msg"].replace("IDLE (", "").replace(")", "").split(", ") if f not in ["C1", "C5", "C6", "C7"]]
             w_status = f"IDLE ({', '.join(w_fails)})" if w_fails and w_fails != [''] else algo["fail_msg"]
 
-        # 🛠️ 🛠️ டேபிள்ல இப்போ தனித்தனி % காலம்கள் கச்சிதமா அலைன் செய்யப்பட்டுள்ளது!
         report_data.append([
             stock_name, price,
             h_status, h_entry if h_entry > 0 else "-", f"₹{h_pnl_rs}" if h_entry > 0 else "-", h_pnl_pct_str,
@@ -250,7 +290,13 @@ for ticker in WATCHLIST:
     except Exception:
         continue
 
-# 🛠️ 🛠️ புதிய காலம்கள் "H_PnL(%)" மற்றும் "W_PnL(%)" சேர்க்கப்பட்டது!
+# 💾 3. ஃபண்ட் மற்றும் பொசிஷன் அப்டேட்களை சேவ் செய்கிறோம்
+if used_funds_today > 0 and len(existing_positions) == 0:
+    funds["available_funds"] -= used_funds_today
+
+save_positions(new_saved_positions)
+save_funds(funds)
+
 columns = [
     "Stock", "LTP", 
     "Husband (Swing Mode)", "H_Entry", "H_PnL(Rs)", "H_PnL(%)",
@@ -260,7 +306,6 @@ columns = [
 df = pd.DataFrame(report_data, columns=columns)
 st.dataframe(df, width="stretch", hide_index=True)
 
-# 📊 சம்மரி பர்சடேஜ் கணக்கீடு
 total_h_pnl_pct = round((total_h_pnl_rs / total_h_investment) * 100, 2) if total_h_investment > 0 else 0.0
 total_w_pnl_pct = round((total_w_pnl_rs / total_w_investment) * 100, 2) if total_w_investment > 0 else 0.0
 
@@ -269,7 +314,7 @@ combined_investment = total_h_investment + total_w_investment
 combined_pnl_pct = round((combined_pnl_rs / combined_investment) * 100, 2) if combined_investment > 0 else 0.0
 
 st.markdown("---")
-st.subheader("📊 Hybrid Portfolio Summary (V18.8 - Live Tracker)")
+st.subheader("📊 Hybrid Portfolio Summary (V19.0 - Live Tracker)")
 
 if combined_pnl_rs >= 0:
     st.success(f"### 🤝 Combined Family Performance: **₹ {combined_pnl_rs:,.2f} ({combined_pnl_pct}%)**")
@@ -279,23 +324,17 @@ else:
 col1, col2 = st.columns(2)
 with col1:
     st.info(f"""
-    ### 🤵 Husband Account
+    ### 🤵 Husband Account (Swing Mode)
     * **Total PnL:** **₹ {total_h_pnl_rs:,.2f} ({total_h_pnl_pct}%)**
-    * **Trades:** Total: `{h_total}` | Wins: `{h_wins}` | Losses: `{h_losses}`
+    * **Trades Active/Closed:** `{h_total}` | Wins: `{h_wins}` | Losses: `{h_losses}`
     """)
 
 with col2:
     st.success(f"""
-    ### 👩 Wife Account
+    ### 👩 Wife Account (Intraday Mode)
     * **Total PnL:** **₹ {total_w_pnl_rs:,.2f} ({total_w_pnl_pct}%)**
     * **Trades:** Total: `{w_total}` | Wins: `{w_wins}` | Losses: `{w_losses}`
     """)
 
 if st.button("Refresh Live Data"):
     st.rerun()
-
-st.markdown("---")
-st.info("""
-### 🧠 V18.8 - கண்டிஷன் அகராதி
-* **C1 to C7 கண்டிஷன்கள்:** C1 (Gap Down), C2 (LTP > Prev Close), C3 (LTP > VWAP), C4 (LTP > EMA-20), C5 (RSI > 40), C6 (Volume Spurt), C7 (Day High Breakout).
-""")
