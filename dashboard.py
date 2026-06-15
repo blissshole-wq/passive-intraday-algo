@@ -58,18 +58,18 @@ st.markdown(f"### 🕒 **கடைசியாக புதுப்பிக்
 
 # 3. 🚨 மதியம் 3:15 மணி ஆன உடனே ஆட்டோ க்ளோஸ் செய்ய
 if now >= dtime(15, 15):
-    st.warning("🚨 மதியம் 3:15 ஆகிவிட்டது! அல்கோ இன்ட்ராடே பொசிஷன்களை க்ளோஸ் செய்கிறது...")
-    
-    # 🧠 எர்ரர் வராம இருக்க இங்கேயே லோக்கலா டிஃபைன் பண்ணி சேவ் பண்றோம் ப்ரோ!
-    try:
-        save_positions(new_saved_positions)
-    except NameError:
-        save_positions([]) # ஒருவேளை லிஸ்ட் இல்லைனா காலியான புது ஃபைலை உருவாக்கிடும்!
+        st.warning("🚨 மதியம் 3:15 ஆகிவிட்டது! அல்கோ நிறுத்தப்படுகிறது.")
         
-    save_funds(funds)
-    time.sleep(5)
-    os._exit(0)
-
+        try:
+            # ஃபர்ஸ்ட் நார்மலா எக்ஸிஸ்டிங் பொசிஷனை சேவ் பண்ண ட்ரை பண்ணும்
+            save_positions(existing_positions)
+        except NameError:
+            # ஒருவேளை அந்த வேரியபிள் இல்லைனா எர்ரர் வராம காலியான லிஸ்ட்டை சேவ் பண்ணும்
+            save_positions([])
+            
+        save_funds(funds)
+        time.sleep(5)
+        os._exit(0)
 # 🔒 டைனமிக் லிமிட்ஸ்
 MIN_TARGET = 0.6
 MAX_TARGET = 1.5
