@@ -1,3 +1,5 @@
+import sys
+import asyncio  
 import streamlit as st
 import yfinance as yf
 import pandas as pd
@@ -8,76 +10,142 @@ import pytz
 import os
 import time
 
+# 🚨 விண்டோஸ் நெட்வொர்க் எர்ரரை தடுக்கும் பாலிசி
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 st.set_page_config(layout="wide")
 st.title("🚀 PASSIVE HYBRID ALGO - V19.0 (CARRY FORWARD & FUND TRACKER ENGINE)")
 
 # 🕒 லைவ் டைம் டிரேக்கர் செட்டப்
 ist = pytz.timezone('Asia/Kolkata')
-now = global_dt.datetime.now(ist).time()
+now_time = global_dt.datetime.now(ist).time()
 today_str = global_dt.datetime.now(ist).strftime('%Y-%m-%d')
 
-# 📂 1. POSITION & FUND TRACKER ENGINE (டேட்டாபேஸ் ஃபைல் ப்ரோ)
+# 📂 1. POSITION & FUND TRACKER ENGINE
 DB_FILE = "positions_db.csv"
 FUND_FILE = "fund_tracker.csv"
 
 def load_positions():
-    import os
     if not os.path.exists(DB_FILE) or os.stat(DB_FILE).st_size == 0:
         return []
     try:
         return pd.read_csv(DB_FILE).to_dict(orient="records")
     except pd.errors.EmptyDataError:
         return []  
+
 def save_positions(positions_list):
     pd.DataFrame(positions_list).to_csv(DB_FILE, index=False)
 
 def load_funds():
     if os.path.exists(FUND_FILE):
         return pd.read_csv(FUND_FILE).to_dict(orient="records")[0]
-    # ஆரம்ப நிதி (Default Initial Capital: 1,000,000)
     return {"initial_capital": 100000.0, "available_funds": 100000.0}
 
 def save_funds(fund_dict):
     pd.DataFrame([fund_dict]).to_csv(FUND_FILE, index=False)
 
-# லோக்கல் டேட்டாவை லோடு செய்றோம் ப்ரோ
+# =======================================================================
+# 🎯 2. டேட்டாவை ஆரம்பத்திலேயே லோடு செய்து, லாபத்தை கணக்கிடுகிறோம்!
+# =======================================================================
 existing_positions = load_positions()
+funds = load_funds()
+
+live_pnl = 0.0
+if existing_positions:
+    for pos in existing_positions:
+        try:
+            pnl_val = pos.get('W_PnL(Rs)', 0)
+            if isinstance(pnl_val, str):
+                pnl_val = pnl_val.replace('₹', '').replace(',', '').strip()
+                if pnl_val == '-' or pnl_val == '': 
+                    pnl_val = 0.0
+            live_pnl += float(pnl_val)
+        except:
+            pass
+
+# =======================================================================
+# 🎯 3. SIDEBAR செக்ஷன்: Fund Tracker & Live Margin Estimator (பக்கா பிக்ஸ்!)
+# =======================================================================
+st.sidebar.markdown(f"## 💰 Live Fund Tracker")
+original_capital = funds.get('initial_capital', 100000.00)
+current_available = funds.get('available_funds', 100000.00)
+
+# லைவ் ப்ராஃபிட்டை அவைலபிள் ஃபண்டில் கூட்டுகிறோம்
+realtime_available = current_available + live_pnl
+
+st.sidebar.metric("ஆரம்ப மூலதனம் (Initial Capital)", f"₹ {original_capital:,.2f}")
+# 🔥 இப்போ எந்த கண்டிஷனும் இல்லாம எப்போவுமே 'கைவசம் உள்ள தொகை' காட்டும் மாப்ள!
+st.sidebar.metric("கைவசம் உள்ள தொகை (Available Funds)", f"₹ {realtime_available:,.2f}")
+
+if live_pnl > 0:
+    st.sidebar.success(f"📈 இன்றைய லாபம் சேர்க்கப்பட்டது: +₹ {live_pnl:,.2f}")
+
+st.sidebar.markdown("---")
+
+# 🧮 LIVE MARGIN ESTIMATOR விட்ஜெட்
+st.sidebar.markdown("### 🧮 Live Margin Estimator")
+ltp_input = st.sidebar.number_input("ஸ்டாக் விலை (LTP ₹)", min_value=1.0, value=1505.0, step=0.5)
+qty_input = st.sidebar.number_input("குவாண்டிட்டி (Quantity)", min_value=1, value=10, step=1)
+mode_input = st.sidebar.selectbox("டிரேடிங் மோடு (Mode)", ["Husband (Swing - 1x)", "Wife (Intraday - 5x)"])
+
+# மார்ஜின் கால்குலேஷன் லாஜிக்
+gross_order_value = ltp_input * qty_input
+if "Wife" in mode_input:
+    margin_required = gross_order_value / 5
+    leverage_text = "(5x Leverage Applied)"
+else:
+    margin_required = gross_order_value
+    leverage_text = "(1x Leverage Applied - No Margin Benefit)"
+
+simulated_balance = realtime_available - margin_required
+
+st.sidebar.markdown("#### ⚡ Estimated Balance After Order")
+st.sidebar.metric("மீதமுள்ள தொகை (Simulated Available)", f"₹ {simulated_balance:,.2f}")
+
+# மார்ஜின் ஹைலைட் பாக்ஸ்
+st.sidebar.info(f"**இந்த ஆர்டருக்கு பிடிக்கும் மார்ஜின்:** ₹ {margin_required:,.2f}")
+st.sidebar.caption(f"மொத்த ஆர்டர் மதிப்பு: ₹ {gross_order_value:,.2f}  \n{leverage_text}")
+
+
+# =======================================================================
+# 🎯 4. மெயின் பக்கத்து டேபிளை டிஸ்ப்ளே செய்கிறோம்!
+# =======================================================================
 if existing_positions:
     df = pd.DataFrame(existing_positions)
     df = df.replace('-', 0).fillna(0)
-    st.dataframe(df)
-funds = load_funds()
+    df = df.apply(pd.to_numeric, errors='ignore')
+    
+    df_display = df.astype(str).replace(r'^\s*-\s*$', '0', regex=True).replace('nan', '0')
+    st.write(df_display) 
 
-# 💰 ஃபண்ட் ட்ராக்கர் டிஸ்ப்ளே (டாப்லேயே காட்டும்)
-st.sidebar.markdown(f"## 💰 Fund Tracker")
-st.sidebar.metric("ஆரம்ப மூலதனம் (Initial Capital)", f"₹ {funds['initial_capital']:,.2f}")
-st.sidebar.metric("கைவசம் உள்ள தொகை (Available Funds)", f"₹ {funds['available_funds']:,.2f}")
+# ⏰ மதியம் 3:15 அல்கோ ஆட்டோ-கட்ஆஃப் லாஜிக் 
+import datetime
+current_now = datetime.datetime.now().time()
+dtime_obj = datetime.time
 
-# 1. காலையில 9:15-க்கு முன்னாடி அல்கோ காத்திருக்க
-if now < dtime(9, 15):
-    st.info("🕒 மார்க்கெட் இன்னும் ஓபன் ஆகவில்லை. 9:15 AM வரை அல்கோ காத்திருக்கிறது...")
-    time.sleep(30)
-    st.rerun()
-
-# 2. லைவ் டிக்கர் நேரம் கச்சிதமாகக் காட்ட
-current_time = global_dt.datetime.now(ist).strftime('%Y-%m-%d %I:%M:%S %p')
-st.markdown(f"### 🕒 **கடைசியாக புதுப்பிக்கப்பட்ட நேரம் (Live Ticker):** `{current_time}`")
-
-# 3. 🚨 மதியம் 3:15 மணி ஆன உடனே ஆட்டோ க்ளோஸ் செய்ய
-if now >= dtime(15, 15):
-        st.warning("🚨 மதியம் 3:15 ஆகிவிட்டது! அல்கோ நிறுத்தப்படுகிறது.")
-        
-        try:
-            # ஃபர்ஸ்ட் நார்மலா எக்ஸிஸ்டிங் பொசிஷனை சேவ் பண்ண ட்ரை பண்ணும்
-            save_positions(existing_positions)
-        except NameError:
-            # ஒருவேளை அந்த வேரியபிள் இல்லைனா எர்ரர் வராம காலியான லிஸ்ட்டை சேவ் பண்ணும்
-            save_positions([])
-            
-        save_funds(funds)
+if current_now >= dtime_obj(15, 15):
+    st.warning("🚨 மதியம் 3:15 ஆகிவிட்டது! அல்கோ நிறுத்தப்படுகிறது.")
+    
+    try:
+        save_positions(existing_positions if existing_positions else [])
+        save_funds(funds if funds else {})
         time.sleep(5)
         os._exit(0)
-# 🔒 டைனமிக் லிமிட்ஸ்
+    except Exception as e:
+        st.error(f"Save Error: {e}")
+        try:
+            save_positions([])
+        except Exception:
+            pass
+        try:
+            save_funds(funds if funds else {})
+        except Exception:
+            pass
+        time.sleep(5)
+        os._exit(0)
+
+# 🔒 ஸ்ட்ரேட்டஜி பாராமீட்டர்கள்
 MIN_TARGET = 0.6
 MAX_TARGET = 1.5
 MIN_SL = 0.4
@@ -124,7 +192,6 @@ def check_algo_conditions(hist, day_hist):
         else:
             dynamic_sl = 0.5
 
-        # 🚨 உங்க பழைய இன்ட்ராடே கண்டிஷன்ஸ் எதையுமே மாத்தல ப்ரோ!
         c1 = hist['Open'].iloc[-1] < prev_close  
         c2 = price > prev_close                  
         c3 = price > vwap                        
@@ -196,10 +263,9 @@ for ticker in WATCHLIST:
         h_status, h_entry, h_pnl_rs, h_pnl_pct_str = "-", 0.0, 0.0, "-"
         w_status, w_entry, w_pnl_rs, w_pnl_pct_str = "-", 0.0, 0.0, "-"
 
-        # 🧠 2. CARRY FORWARD LOGIC
         past_pos = next((p for p in existing_positions if p["stock"] == stock_name), None)
 
-        # --- Husband Account (Swing Mode with Carry Forward) ---
+        # --- Husband Account (Swing Mode) ---
         if algo["all_passed"] or past_pos:
             h_entry = past_pos["entry_price"] if past_pos else day_open_price
             pnl_pct = ((price - h_entry) / h_entry) * 100
@@ -237,7 +303,6 @@ for ticker in WATCHLIST:
                 h_status = f"🥇 SWING HOLD (T:{tg}%/S:{sl}%)"
                 h_pnl_rs = round((price - h_entry) * TRADE_QTY, 2)
                 h_pnl_pct_str = f"{round(pnl_pct, 2)}%"
-                # டார்கெட் அடிக்காத வரை நாளைக்கு Carry Forward ஆகும் ப்ро!
                 new_saved_positions.append({"stock": stock_name, "entry_price": h_entry, "date": today_str})
             
             total_h_pnl_rs += h_pnl_rs
@@ -297,7 +362,7 @@ for ticker in WATCHLIST:
     except Exception:
         continue
 
-# 💾 3. ஃபண்ட் மற்றும் பொசிஷன் அப்டேட்களை சேவ் செய்கிறோம்
+# 💾 5. ஃபண்ட் மற்றும் பொசிஷன் அப்டேட்களை சேவ் செய்கிறோம்
 if used_funds_today > 0 and len(existing_positions) == 0:
     funds["available_funds"] -= used_funds_today
 
