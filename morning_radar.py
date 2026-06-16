@@ -1,8 +1,8 @@
 import requests
 import datetime
 
-TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
-CHAT_ID = "YOUR_TELEGRAM_CHAT_ID"
+TOKEN = "8272836968:AAFIiPvIvFRSELJ5RFlqzYm4rOkzgDsJr5o"
+CHAT_ID = "6114756103"
 
 def get_live_market_data():
     today = datetime.datetime.now().strftime("%Y-%m-%d | %I:%M %p")
@@ -35,6 +35,7 @@ def get_live_market_data():
     return report
 
 def send_to_telegram():
+    global TOKEN, CHAT_ID  
     text = get_live_market_data()
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     payload = {"chat_id": CHAT_ID, "text": text, "parse_mode": "Markdown"}
