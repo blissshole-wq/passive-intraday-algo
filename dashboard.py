@@ -42,6 +42,10 @@ def save_funds(fund_dict):
 
 # லோக்கல் டேட்டாவை லோடு செய்றோம் ப்ரோ
 existing_positions = load_positions()
+if existing_positions:
+    df = pd.DataFrame(existing_positions)
+    df = df.replace('-', 0).fillna(0)
+    st.dataframe(df)
 funds = load_funds()
 
 # 💰 ஃபண்ட் ட்ராக்கர் டிஸ்ப்ளே (டாப்லேயே காட்டும்)
