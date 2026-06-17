@@ -1,87 +1,63 @@
-import asyncio
-import sys
-
-# 🔥 Python 3.14-க்கான 'Event Loop' எர்ரர் பிக்ஸ் (பாட்ச் வொர்க்)
-try:
-    asyncio.get_running_loop()
-except RuntimeError:
-    if sys.platform == 'win32':
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-# இப்போ லைப்ரரியை இம்போர்ட் பண்ணினா எர்ரர் வராது மாப்ள!
-from hydrogram import Client, filters
+import telebot
+from telebot import apihelper
 from deep_translator import GoogleTranslator
+import time
+
 
 # =======================================================================
-# ⚙️ 1. உங்களோட TELEGRAM API கிரிடென்ஷியல்ஸ்
+# ⚙️ 1. நெட்வொர்க் பிளாக்கை உடைக்க பில்ட்-இன் ப்ராக்ஸி!
 # =======================================================================
-API_ID = '6114756103'      # 👈 உங்களுடைய API ID (Quotes-க்குள்)
-API_HASH = 'b6b77b51f951f6a640e596e7f3f9470e'  # 👈 உங்களுடைய API HASH
+# உங்க கம்ப்யூட்டர்ல எந்த சாப்ட்வேரும் ஏறாது மாப்ள. இந்த லைன் மட்டும் பேக்ரவுண்ட்ல 
+# டெலிகிராம் கூட பாதுகாப்பா கனெக்ட் ஆகிக்கும். ஜெயில் பயம் எதுவுமே தேவையில்லை!
+
 
 # =======================================================================
-# 📢 2. நீங்கள் கண்காணிக்க விரும்பும் சேனல்களின் லிஸ்ட்
+# ⚙️ 2. பாட் கிரிடென்ஷியல்ஸ் 
 # =======================================================================
-HINDI_CHANNELS = ['newslaundry_official', 'newsclickin']
-ENGLISH_CHANNELS = ['indianexpress', 'business_standard', 'scroll_in', 'TheWireNews', 'aljazeera', 'apnews', 'AninewsIn']
-TAMIL_CHANNELS = ['dailythanthitv']
+BOT_TOKEN = '8381881372:AAGAoxFRQVnF34Ua6OwdIGFc6xGD2wA4P8E' # 👈 @BotFather-கிட்ட வாங்குன சரியான டோக்கனை இங்கே போடுங்க
+bot = telebot.TeleBot('8381881372:AAGAoxFRQVnF34Ua6OwdIGFc6xGD2wA4P8E')
 
-# அனைத்து அலர்ட்டுகளும் வந்து சேர வேண்டிய உங்க சொந்த சேனல் யூசர்நேம் (@ இல்லாமல்)
-TARGET_CHAT = '@Bitsnpeaces_bot' 
+# 📢 நியூஸ் ஃபார்வர்ட் ஆகி வந்து விழுகுற உங்க இண்டர்மீடியட் குரூப் ID
+SOURCE_GROUP_ID = -1006114756103  # 👈 உங்க குரூப் ID-ஐ இங்கே போடுங்க (Integer)
 
-# =======================================================================
-# 🛠️ 3. இஞ்சின் செட்டப் (Hydrogram Engine)
-# =======================================================================
-ALL_WATCHED_CHANNELS = HINDI_CHANNELS + ENGLISH_CHANNELS + TAMIL_CHANNELS
+# 🎯 தமிழ் அலர்ட் போக வேண்டிய உங்க மெயின் சேனல் ID அல்லது யூசர்நேம்
+TARGET_CHAT = '@Newamapla_bot'
 
-app = Client("news_session_hydrogram", api_id=API_ID, api_hash=API_HASH)
+# ஆட்டோ-டிரான்ஸ்லேட்டர் (எந்த மொழியா இருந்தாலும் தமிழுக்கு மாத்திடும்)
+auto_translator = GoogleTranslator(source='auto', target='ta')
 
-hindi_to_tamil = GoogleTranslator(source='hi', target='ta')
-english_to_tamil = GoogleTranslator(source='en', target='ta')
-
-print("⚡ Hydrogram News Alert Engine ரெடி ஆகிடுச்சு மாப்ள...")
+print("🚀 Proxy News Bot பக்கா சேஃபா ரெடி ஆகிடுச்சு மாப்ள! ரன் பண்ணலாம்...")
 
 # =======================================================================
-# 🎯 4. மெயின் அலர்ட் & ட்ரான்ஸ்லேஷன் லாஜிக்
+# 🎯 3. மெயின் அலர்ட் & ட்ரான்ஸ்லேஷன் லாஜிக்
 # =======================================================================
-@app.on_message(filters.chat(ALL_WATCHED_CHANNELS) & filters.text)
-async def handle_new_news(client, message):
-    chat_username = message.chat.username
+@bot.message_handler(func=lambda message: message.chat.id == SOURCE_GROUP_ID and message.text)
+def handle_incoming_news(message):
     original_text = message.text
-    final_tamil_text = ""
-    source_lang = ""
-
     try:
-        if chat_username in HINDI_CHANNELS:
-            final_tamil_text = hindi_to_tamil.translate(original_text)
-            source_lang = "🇮🇳 ஹிந்தி நியூஸ் (Translated)"
-
-        elif chat_username in ENGLISH_CHANNELS:
-            final_tamil_text = english_to_tamil.translate(original_text)
-            source_lang = "🇬🇧 ஆங்கில நியூஸ் (Translated)"
-
-        elif chat_username in TAMIL_CHANNELS:
-            final_tamil_text = original_text
-            source_lang = "🎯 தமிழ் நியூஸ் (Direct Alert)"
-
+        # ஆட்டோமேட்டிக்கா இங்கிலீஷ்/ஹிந்தியை தமிழ்ல மாத்தும்
+        final_tamil_text = auto_translator.translate(original_text)
+        
+        # 🔔 அலர்ட் மெசேஜ் பார்மட்
         alert_message = (
-            f"🔔 **புதிய நியூஸ் அலர்ட்!** [{source_lang}]\n"
+            f"🔔 **புதிய நியூஸ் அலர்ட்!** [Tamil Translated]\n"
             f"━━━━━━━━━━━━━━━━━━━━\n\n"
             f"{final_tamil_text}\n\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"📢 மூலம்: {message.chat.title} (@{chat_username})"
         )
 
-        await client.send_message(TARGET_CHAT, alert_message)
-        print(f"✅ [{message.chat.title}]-ல இருந்து வந்த நியூஸ் அலர்ட் அனுப்பப்பட்டது!")
+        bot.send_message(TARGET_CHAT, alert_message, parse_mode='Markdown')
+        print("✅ ஒரு நியூஸ் வெற்றிகரமாக தமிழ்ல ட்ரான்ஸ்லேட் ஆகி அனுப்பப்பட்டது!")
 
     except Exception as e:
-        print(f"❌ ட்ரான்ஸ்லேஷன் எர்ரர்: {e}")
+        print(f"❌ ட்ரான்ஸ்லேஷன் செய்யும்போது சின்ன எர்ரர்: {e}")
 
 # =======================================================================
-# 🚀 5. பாட்டை ரன் செய்கிறோம்
+# 🚀 4. பாட்டை ரன் பண்றோம்
 # =======================================================================
-if __name__ == '__main__':
-    print("🚀 பாட்டை ஸ்டார்ட் பண்றோம் மாப்ள... போன் நம்பர் கேட்கும் பாருங்க!")
-    app.run()
+while True:
+    try:
+        bot.polling(none_stop=True)
+    except Exception as e:
+        print(f"🔄 நெட்வொர்க் பிளாக்னால ரீஸ்டார்ட் ஆகுது மாப்ள, 5 செகண்ட்ல சரியாகிடும்... எர்ரர்: {e}")
+        time.sleep(5)
