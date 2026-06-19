@@ -8,6 +8,22 @@ from datetime import time as dtime
 import datetime as global_dt
 import pytz
 import os
+import csv
+import json
+import os
+import time
+import streamlit as st
+
+if 'last_run' not in st.session_state:
+    st.session_state.last_run = time.time()
+
+if time.time() - st.session_state.last_run > 60:
+    st.session_state.last_run = time.time()
+    st.rerun()
+
+# --- இதற்குக் கீழே உங்க பழைய கோட் தொடரும் ---
+st.set_page_config(layout="wide")
+st.title("🚀 PASSIVE HYBRID ALGO - V20.0...")
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -30,14 +46,19 @@ def save_positions(positions_list):
     pd.DataFrame(positions_list).to_csv(DB_FILE, index=False)
 
 def load_funds():
-    if os.path.exists(FUND_FILE) and os.stat(FUND_FILE).st_size > 0:
+    # dashboard.py-ல இதை யூஸ் பண்ணுங்க
+    if os.path.exists("balances.json"):
         try:
-            df = pd.read_csv(FUND_FILE)
-            # பழைய ஃபைல்ல peak_margin காலம் இல்லைனா ஆட்டோமேட்டிக்கா ஆட் பண்ணும்
-            if "peak_margin" not in df.columns:
-                df["peak_margin"] = 0.0
-            return df.to_dict(orient="records")[0]
-        except: pass
+            with open("balances.json", "r") as f:
+                data = json.load(f)
+            # உங்க dashboard டேட்டாவுக்கு ஏத்த மாதிரி மாத்திக்கோங்க
+            return {
+                "initial_capital": data.get("total_capital", 100000.0),
+                "available_funds": data.get("husband_balance", 60000.0) + data.get("wife_balance", 40000.0),
+                "peak_margin": data.get("peak_margin", 0.0)
+            }
+        except:
+            pass
     return {"initial_capital": 100000.0, "available_funds": 100000.0, "peak_margin": 0.0}
 
 def save_funds(fund_dict):
