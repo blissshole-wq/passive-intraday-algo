@@ -1,80 +1,70 @@
-import pandas as pd
-import os
 import csv
 import json
 import time
 import datetime
+import os
 
-# 1. Trade Log அப்டேட் பண்ண
-def log_trade(stock, pnl, mode):
-    result = 'WIN' if pnl > 0 else 'LOSS'
-    file_exists = os.path.isfile('trade_log.csv')
-    
-    with open('trade_log.csv', 'a', newline='') as f:
-        writer = csv.writer(f)
-        if not file_exists:
-            writer.writerow(['Stock', 'PnL', 'Result', 'Mode'])
-        writer.writerow([stock, pnl, result, mode])
+# --- கான்ஃபிகரேஷன் ---
+BALANCES_FILE = 'balances.json'
+LOG_FILE = 'trade_log.csv'
 
-# 2. பேலன்ஸ் செக் பண்ண
+# 1. பேலன்ஸ் ரீட் பண்ண
 def get_balances():
-    with open('balances.json', 'r') as f:
+    if not os.path.exists(BALANCES_FILE):
+        # ஒருவேளை ஃபைல் இல்லனா கிரியேட் பண்ணிக்கோம்
+        default_data = {"husband_balance": 50000.0, "wife_balance": 50000.0, "total_capital": 100000.0}
+        save_balances(default_data)
+        return default_data
+    with open(BALANCES_FILE, 'r') as f:
         return json.load(f)
 
-# 3. ட்ரேடு எடுக்கும்போது மார்ஜினை கழிக்க
-def execute_trade(stock, mode, margin_required):
-    balances = get_balances() # இது இப்போ ஒரு Dictionary
-    
-    if balances[f'{mode}_balance'] >= margin_required:
-        balances[f'{mode}_balance'] -= margin_required
-        
-        with open('balances.json', 'w') as f:
-            json.dump(balances, f, indent=4)
-        
-        return True
-    return False    
-def add_pnl(mode, pnl):
+# 2. பேலன்ஸ் சேவ் பண்ண
+def save_balances(data):
+    with open(BALANCES_FILE, 'w') as f:
+        json.dump(data, f, indent=4)
+
+# 3. PnL அப்டேட் பண்ண (Husband or Wife account)
+def update_pnl(mode, pnl):
     balances = get_balances()
     balances[f'{mode}_balance'] += pnl
-    balances.to_json('balances.json', orient='columns', indent=4)
+    # மொத்த கேபிட்டல் அப்டேட்
+    balances['total_capital'] = balances.get('husband_balance', 50000) + balances.get('wife_balance', 50000)
+    save_balances(balances)
+    print(f"💰 {mode.capitalize()} PnL Updated: {pnl}. New Balance: {balances[f'{mode}_balance']}")
 
-def square_off_wife_positions():
+# 4. ட்ரேடு லாக் பண்ண
+def log_trade(stock, pnl, mode):
+    result = 'WIN' if pnl > 0 else 'LOSS'
+    file_exists = os.path.isfile(LOG_FILE)
+    with open(LOG_FILE, 'a', newline='') as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow(['Timestamp', 'Stock', 'PnL', 'Result', 'Mode'])
+        writer.writerow([datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), stock, pnl, result, mode])
     
-    with open('wife_positions.csv', 'w') as f:
-        f.write("") # Clear file
-    print("Wife account squared off for the day!") 
+    # லாபத்தை பேலன்ஸ்ல ஆட் பண்ண
+    update_pnl(mode, pnl)
 
+# 5. மார்க்கெட் க்ளோஸ் டைம் செக்
 def main_loop():
+    print("--- 🚀 Algo Engine Online V20.0 ---")
+    
+    # இங்கதான் உங்க மெயின் லாஜிக் வரும்
+    # உதாரணத்துக்கு ஒரு ட்ரேடு நடந்தா இப்படி கூப்பிடணும்:
+    # log_trade("RELIANCE.NS", 131.3, "wife")
+    
     while True:
         current_time = datetime.datetime.now().time()
-        if current_time >= datetime.time(15, 20):
-            # ஒருமுறை மட்டும் ரன் ஆக இதை உறுதிப்படுத்திக்கோங்க
-            update_daily_capital(today_net_profit)
-            break # லூப்பை விட்டு வெளியே வந்து க்ளோஸ் பண்ணிடலாம்
-            time.sleep(10) # இது ரொம்ப முக்கியம்!
-    
-# --- engine.py-ன் கடைசி பகுதி இப்படி இருக்கட்டும் ---
-
-def update_daily_capital(today_net_profit):
-    # 1. பழைய பேலன்ஸை ரீட் பண்ணுங்க
-    with open("balances.json", "r") as f:
-        data = json.load(f)
-    
-    # 2. லாபத்தைக் கூட்டுங்க
-    old_total = data.get("total_capital", 100000.0)
-    new_total = old_total + today_net_profit
-    
-    # 3. புது பேலன்ஸை அப்டேட் பண்ணுங்க
-    data["total_capital"] = new_total
-    
-    # 4. ஃபைல்ல சேவ் பண்ணுங்க
-    with open("balances.json", "w") as f:
-        json.dump(data, f, indent=4)
         
-    print(f"✅ Daily capital updated! New Total: {new_total}")
+        # மார்க்கெட் க்ளோஸர் செக் (3:20 PM)
+        if current_time >= datetime.time(15, 20):
+            print("🕒 Market closing time reached. Engine shutting down for today.")
+            break 
+        
+        # இங்க உங்க லைவ் மார்க்கெட் கண்டிஷன்ஸை செக் பண்ணுங்க
+        # print("Scanning market...")
+        
+        time.sleep(60) # 1 நிமிஷத்துக்கு ஒருமுறை செக் பண்ணா போதும் (CPU சுமை குறையும்)
 
 if __name__ == "__main__":
-    print("--- 🚀 Algo Engine Online ---")
-    # இங்கதான் உங்க main_loop() இருக்கணும்
     main_loop()
-

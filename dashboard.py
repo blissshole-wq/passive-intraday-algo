@@ -1,77 +1,99 @@
 import sys
-import asyncio  
+import asyncio
 import streamlit as st
 import yfinance as yf
+import pandas_ta as ta
 import pandas as pd
-import ta
-from datetime import time as dtime
-import datetime as global_dt
 import pytz
 import os
-import csv
 import json
-import os
 import time
-import streamlit as st
-import time
-from datetime import datetime
+from datetime import datetime, time as dtime
+import datetime as global_dt
 
+# --- 1. பங்க்ஷன்கள் (முதலில் வர வேண்டும்) ---
+@st.cache_data(ttl=3600)
+def get_advanced_metrics(stocks):
+    data_list = []
+    for ticker in stocks:
+        stock = yf.Ticker(ticker)
+        hist = stock.history(period="6mo")
+        info = stock.info
+        rsi_val = ta.rsi(hist['Close'], length=14)
+        rsi = rsi_val.iloc[-1] if not rsi_val.empty else 0
+        
+        data_list.append({
+            "Ticker": ticker.replace(".NS", ""),
+            "Price": round(hist['Close'].iloc[-1], 2),
+            "RSI": round(rsi, 2),
+            "P/E Ratio": info.get('trailingPE', 'N/A'),
+            "ROE": f"{round(info.get('returnOnEquity', 0) * 100, 2)}%" if info.get('returnOnEquity') else 'N/A',
+            "Debt/Equity": info.get('debtToEquity', 'N/A'),
+            "Market Cap": f"{round(info.get('marketCap', 0) / 1e9, 2)} B"
+        })
+    return pd.DataFrame(data_list)
 
+# --- 2. பேஜ் செட்டிங்ஸ் (ஒரே ஒரு முறை மட்டும்) ---
+st.set_page_config(layout="wide")
+st.title("🚀 PASSIVE HYBRID ALGO - V20.0 (PERMANENT PEAK MARGIN ENGINE)")
 
-if 'last_refresh' not in st.session_state:
-    st.session_state.last_refresh = time.time()
+# --- 3. டேப்ஸ் ---
+tab1, tab2 = st.tabs(["📈 Active Positions", "🔍 Stock Analysis"])
 
-# 60 வினாடிக்கு ஒருமுறை ஆட்டோ-ரீஃப்ரெஷ் செய்ய
+with tab1:
+    st.write("### Active Algo Engine is monitoring...")
+    # இங்கே உங்களுடைய பழைய Active Algo கோடை சேர்த்துக்கொள்ளுங்கள்
+
+with tab2:
+    st.subheader("📊 Fundamental & Technical Analysis")
+    WATCHLIST = ["RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", "ITC.NS"]
+    # இப்போ 'get_advanced_metrics' கரெக்டா வேலை செய்யும்
+    df_metrics = get_advanced_metrics(WATCHLIST)
+    st.dataframe(df_metrics, use_container_width=True)
+
+# --- 4. ரீஃப்ரெஷ் லாஜிக் ---
+if 'last_refresh' not in st.session_state: st.session_state.last_refresh = time.time()
 if time.time() - st.session_state.last_refresh > 60:
     st.session_state.last_refresh = time.time()
     st.rerun()
-
-if 'last_run' not in st.session_state:
-    st.session_state.last_run = time.time()
-
-if time.time() - st.session_state.last_run > 60:
-    st.session_state.last_run = time.time()
-    st.rerun()
-
-# --- இதற்குக் கீழே உங்க பழைய கோட் தொடரும் ---
-st.set_page_config(layout="wide")
-st.title("🚀 PASSIVE HYBRID ALGO - V20.0...")
+    
+    df_metrics = get_advanced_metrics(WATCHLIST)
+    st.dataframe(df_metrics, use_container_width=True)
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-st.set_page_config(layout="wide")
-st.title("🚀 PASSIVE HYBRID ALGO - V20.0 (PERMANENT PEAK MARGIN ENGINE)")
-
 ist = pytz.timezone('Asia/Kolkata')
-today_str = global_dt.datetime.now(ist).strftime('%Y-%m-%d')
+today_str = datetime.now(ist).strftime('%Y-%m-%d')
 
 DB_FILE = "positions_db.csv"
 FUND_FILE = "fund_tracker.csv"
 
 def load_positions():
-    if not os.path.exists(DB_FILE) or os.stat(DB_FILE).st_size == 0: return []
-    try: return pd.read_csv(DB_FILE).to_dict(orient="records")
-    except: return []  
+    if not os.path.exists(DB_FILE) or os.stat(DB_FILE).st_size == 0: 
+        return []
+    try: 
+        return pd.read_csv(DB_FILE).to_dict(orient="records")
+    except: 
+        return []  
 
 def save_positions(positions_list):
     pd.DataFrame(positions_list).to_csv(DB_FILE, index=False)
 
 def load_funds():
-    # dashboard.py-ல இதை யூஸ் பண்ணுங்க
-    if os.path.exists("balances.json"):
-        try:
+    try:
+        if os.path.exists("balances.json"):
             with open("balances.json", "r") as f:
                 data = json.load(f)
-            # உங்க dashboard டேட்டாவுக்கு ஏத்த மாதிரி மாத்திக்கோங்க
             return {
-                "initial_capital": data.get("total_capital", 100000.0),
-                "available_funds": data.get("husband_balance", 60000.0) + data.get("wife_balance", 40000.0),
-                "peak_margin": data.get("peak_margin", 0.0)
+                "husband": data.get("husband_balance", 50000.0),
+                "wife": data.get("wife_balance", 50000.0),
+                "total": data.get("total_capital", 100000.0)
             }
-        except:
-            pass
-    return {"initial_capital": 100000.0, "available_funds": 100000.0, "peak_margin": 0.0}
+    except:
+        pass
+    # fallback defaults
+    return {"husband": 50000.0, "wife": 50000.0, "total": 100000.0}
 
 def save_funds(fund_dict):
     pd.DataFrame([fund_dict]).to_csv(FUND_FILE, index=False)
@@ -272,12 +294,26 @@ else:
     st.error(f"### 🤝 Combined Family Performance: **₹ {combined_pnl_rs:,.2f}**")
 
 col1, col2 = st.columns(2)
+# Husband Account PnL காட்ட வேண்டிய இடம்
 with col1:
-    st.info(f"### 🤵 Husband Account\n* **Total PnL:** **₹ {total_h_pnl_rs:,.2f}**\n* **Trades:** `{h_total}` | Wins: `{h_wins}` | Losses: `{h_losses}`")
+    st.info(f"""
+    ### 🤵 Husband Account
+    * **Net PnL Today:** **₹ {total_h_pnl_rs:,.2f}**
+    * **Stats:** `{h_total}` Trades | ✅ `{h_wins}` Wins | ❌ `{h_losses}` Losses
+    * **Account Balance:** ₹ {funds.get('husband_balance', 60000.0):,.2f}
+    """)
 with col2:
-    st.success(f"### 👩 Wife Account\n* **Total PnL:** **₹ {total_w_pnl_rs:,.2f}**\n* **Trades:** `{w_total}` | Wins: `{w_wins}` | Losses: `{w_losses}`")
-
-if st.button("Refresh Live Data"): st.rerun()
+    st.success(f"""
+    ### 👩 Wife Account
+    * **Net PnL Today:** **₹ {total_w_pnl_rs:,.2f}**
+    * **Stats:** `{w_total}` Trades | ✅ `{w_wins}` Wins | ❌ `{w_losses}` Losses
+    * **Account Balance:** ₹ {funds.get('wife_balance', 40000.0):,.2f}
+    """)
+# ஆட்டோ ரீஃப்ரெஷ் லாஜிக்
+if 'last_refresh' not in st.session_state: st.session_state.last_refresh = time.time()
+if time.time() - st.session_state.last_refresh > 60:
+    st.session_state.last_refresh = time.time()
+    st.rerun()
 
 st.write(f"Last Updated: {datetime.now().strftime('%H:%M:%S')}")
 time.sleep(1)
