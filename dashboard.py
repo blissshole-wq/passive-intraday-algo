@@ -13,6 +13,10 @@ import json
 import os
 import time
 import streamlit as st
+import time
+from datetime import datetime
+
+
 
 if 'last_refresh' not in st.session_state:
     st.session_state.last_refresh = time.time()
@@ -274,3 +278,7 @@ with col2:
     st.success(f"### 👩 Wife Account\n* **Total PnL:** **₹ {total_w_pnl_rs:,.2f}**\n* **Trades:** `{w_total}` | Wins: `{w_wins}` | Losses: `{w_losses}`")
 
 if st.button("Refresh Live Data"): st.rerun()
+
+st.write(f"Last Updated: {datetime.now().strftime('%H:%M:%S')}")
+time.sleep(1)
+st.rerun()
