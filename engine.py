@@ -48,6 +48,25 @@ def main_loop():
         time.sleep(10) # இது ரொம்ப முக்கியம்!
 
 # --- engine.py-ன் கடைசி பகுதி இப்படி இருக்கட்டும் ---
+
+def update_daily_capital(today_net_profit):
+    # 1. பழைய பேலன்ஸை ரீட் பண்ணுங்க
+    with open("balances.json", "r") as f:
+        data = json.load(f)
+    
+    # 2. லாபத்தைக் கூட்டுங்க
+    old_total = data.get("total_capital", 100000.0)
+    new_total = old_total + today_net_profit
+    
+    # 3. புது பேலன்ஸை அப்டேட் பண்ணுங்க
+    data["total_capital"] = new_total
+    
+    # 4. ஃபைல்ல சேவ் பண்ணுங்க
+    with open("balances.json", "w") as f:
+        json.dump(data, f, indent=4)
+        
+    print(f"✅ Daily capital updated! New Total: {new_total}")
+
 if __name__ == "__main__":
     print("--- 🚀 Algo Engine Online ---")
     # இங்கதான் உங்க main_loop() இருக்கணும்
