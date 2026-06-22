@@ -44,10 +44,11 @@ def square_off_wife_positions():
     print("Wife account squared off for the day!") 
 
 def main_loop():
-    print("--- 🚀 Algo Engine Online ---")
     while True:
-                
         time.sleep(10) # இது ரொம்ப முக்கியம்!
 
+# --- engine.py-ன் கடைசி பகுதி இப்படி இருக்கட்டும் ---
 if __name__ == "__main__":
+    print("--- 🚀 Algo Engine Online ---")
+    # இங்கதான் உங்க main_loop() இருக்கணும்
     main_loop()

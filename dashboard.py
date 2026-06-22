@@ -14,6 +14,14 @@ import os
 import time
 import streamlit as st
 
+if 'last_refresh' not in st.session_state:
+    st.session_state.last_refresh = time.time()
+
+# 60 வினாடிக்கு ஒருமுறை ஆட்டோ-ரீஃப்ரெஷ் செய்ய
+if time.time() - st.session_state.last_refresh > 60:
+    st.session_state.last_refresh = time.time()
+    st.rerun()
+
 if 'last_run' not in st.session_state:
     st.session_state.last_run = time.time()
 
