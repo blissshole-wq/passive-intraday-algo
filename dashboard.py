@@ -70,12 +70,12 @@ DB_FILE = "positions_db.csv"
 FUND_FILE = "fund_tracker.csv"
 
 def load_positions():
-    if not os.path.exists(DB_FILE) or os.stat(DB_FILE).st_size == 0: 
+    if not os.path.exists(DB_FILE) or os.path.getsize(DB_FILE) == 0:
         return []
-    try: 
-        return pd.read_csv(DB_FILE).to_dict(orient="records")
-    except: 
-        return []  
+    try:
+        return pd.read_csv(positions_db.csv).to_dict(orient="records") # இங்கே DB_FILE-ஐ மாத்துங்க
+    except:
+        return [] 
 
 def save_positions(positions_list):
     pd.DataFrame(positions_list).to_csv(DB_FILE, index=False)
