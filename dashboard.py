@@ -11,7 +11,36 @@ import time
 from datetime import datetime, time as dtime
 import datetime as global_dt
 
+DB_FILE = "positions_db.csv"
+FUND_FILE = "fund_tracker.csv"
+
+# --- 2. பேஜ் செட்டிங்ஸ் (ஒரே ஒரு முறை மட்டும்) ---
+st.set_page_config(layout="wide")
+st.title("🚀 PASSIVE HYBRID ALGO - V20.0 (PERMANENT PEAK MARGIN ENGINE)")
+
+# --- 3. டேப்ஸ் ---
+tab1, tab2 = st.tabs(["📈 Active Positions", "🔍 Stock Analysis"])
+
+with tab1:
+    st.write("### Active Algo Engine is monitoring...")
+    # இங்கே உங்களுடைய பழைய Active Algo கோடை சேர்த்துக்கொள்ளுங்கள்
+
+with tab2:
+    st.subheader("📊 Fundamental & Technical Analysis")
+    WATCHLIST = ["RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", "ITC.NS"]
+
 # --- 1. பங்க்ஷன்கள் (முதலில் வர வேண்டும்) ---
+st.write(f"Checking for file: {os.path.abspath(DB_FILE)}") # ஃபைல் எங்கே இருக்குன்னு காட்டும்
+if os.path.exists(DB_FILE):
+    st.write("File exists!")
+else:
+    st.write("File NOT found! Check path.")
+
+@st.cache_data(ttl=60) # 60 வினாடிக்கு ஒருமுறை தான் டேட்டா அப்டேட் ஆகும்
+def get_live_data(ticker):
+    data = yf.Ticker(ticker)
+    return data.history(period="5d", interval="15m")
+
 @st.cache_data(ttl=3600)
 def get_advanced_metrics(stocks):
     data_list = []
@@ -32,30 +61,14 @@ def get_advanced_metrics(stocks):
             "Market Cap": f"{round(info.get('marketCap', 0) / 1e9, 2)} B"
         })
     return pd.DataFrame(data_list)
-
-# --- 2. பேஜ் செட்டிங்ஸ் (ஒரே ஒரு முறை மட்டும்) ---
-st.set_page_config(layout="wide")
-st.title("🚀 PASSIVE HYBRID ALGO - V20.0 (PERMANENT PEAK MARGIN ENGINE)")
-
-# --- 3. டேப்ஸ் ---
-tab1, tab2 = st.tabs(["📈 Active Positions", "🔍 Stock Analysis"])
-
-with tab1:
-    st.write("### Active Algo Engine is monitoring...")
-    # இங்கே உங்களுடைய பழைய Active Algo கோடை சேர்த்துக்கொள்ளுங்கள்
-
-with tab2:
-    st.subheader("📊 Fundamental & Technical Analysis")
-    WATCHLIST = ["RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", "ITC.NS"]
-    # இப்போ 'get_advanced_metrics' கரெக்டா வேலை செய்யும்
-    df_metrics = get_advanced_metrics(WATCHLIST)
-    st.dataframe(df_metrics, use_container_width=True)
+def main():
+    st.title("🚀 PASSIVE HYBRID ALGO - V20.0")
 
 # --- 4. ரீஃப்ரெஷ் லாஜிக் ---
 if 'last_refresh' not in st.session_state: st.session_state.last_refresh = time.time()
 if time.time() - st.session_state.last_refresh > 60:
     st.session_state.last_refresh = time.time()
-    st.rerun()
+    st.empty()
     
     df_metrics = get_advanced_metrics(WATCHLIST)
     st.dataframe(df_metrics, use_container_width=True)
@@ -66,16 +79,26 @@ if sys.platform == 'win32':
 ist = pytz.timezone('Asia/Kolkata')
 today_str = datetime.now(ist).strftime('%Y-%m-%d')
 
-DB_FILE = "positions_db.csv"
-FUND_FILE = "fund_tracker.csv"
+placeholder = st.empty()
 
-def load_positions():
-    if not os.path.exists(DB_FILE) or os.path.getsize(DB_FILE) == 0:
-        return []
+def load_positions_safe():
     try:
-        return pd.read_csv(positions_db.csv).to_dict(orient="records") # இங்கே DB_FILE-ஐ மாத்துங்க
-    except:
-        return [] 
+        if os.path.exists(DB_FILE):
+            return pd.read_csv(DB_FILE)
+    except Exception:
+        # ஃபைல் பிஸியாக இருந்தால் பழைய டேட்டாவையோ அல்லது காலி டேட்டாவையோ அனுப்பவும்
+        return pd.DataFrame() 
+    return pd.DataFrame()
+
+# display saved positions if any
+if placeholder is not None:
+    df = load_positions_safe()
+    with placeholder.container():
+        if df is not None and len(df) > 0:
+            st.dataframe(pd.DataFrame(df), use_container_width=True)
+        else:
+            st.write("Waiting for data...")
+    time.sleep(2)
 
 def save_positions(positions_list):
     pd.DataFrame(positions_list).to_csv(DB_FILE, index=False)
@@ -98,7 +121,7 @@ def load_funds():
 def save_funds(fund_dict):
     pd.DataFrame([fund_dict]).to_csv(FUND_FILE, index=False)
 
-existing_positions = load_positions()
+existing_positions = load_positions_safe()
 funds = load_funds()
 
 current_now = global_dt.datetime.now(ist).time()
@@ -313,8 +336,11 @@ with col2:
 if 'last_refresh' not in st.session_state: st.session_state.last_refresh = time.time()
 if time.time() - st.session_state.last_refresh > 60:
     st.session_state.last_refresh = time.time()
-    st.rerun()
+    st.empty()
 
 st.write(f"Last Updated: {datetime.now().strftime('%H:%M:%S')}")
-time.sleep(1)
-st.rerun()
+time.sleep(60)
+st.empty()
+
+if __name__ == "__main__":
+    main()
