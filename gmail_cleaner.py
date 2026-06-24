@@ -2,15 +2,15 @@ import imaplib
 import email
 from datetime import datetime, timedelta
 
-# --- 1. உங்க ஜிமெயில் ஐடியை மட்டும் இங்கே போடுங்க ப்ரோ ---
-EMAIL_USER = "spalanikumarr@gmail.com"  # 👈 உங்க ஜிமெயில் ஐடியை மட்டும் மாத்துங்க
+# --- 1. Your Gmail address goes here ---
+EMAIL_USER = "spalanikumarr@gmail.com"
 
 print("=" * 60)
-print("🔑 GMAIL SECURE AUTHENTICATION SYSTEM")
+print("GMAIL SECURE AUTHENTICATION SYSTEM")
 print("=" * 60)
 
-# கோடு ரன் ஆனதும் டெர்மினலிலேயே பாஸ்வேர்ட் கேட்கும் வசதி!
-EMAIL_PASS = input("👉 உங்க 16 டிஜிட் கூகுள் ஆப் பாஸ்வேர்டை இங்கே பேஸ்ட் பண்ணுங்க: ").strip()
+# The password will be prompted in the terminal when the script runs.
+EMAIL_PASS = input("Enter your 16-digit Google app password: ").strip()
 
 def clean_gmail_folder(folder_name, search_criterion="ALL"):
     try:

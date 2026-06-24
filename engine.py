@@ -1,4 +1,3 @@
-import pandas as pd
 import os
 import time
 import csv
@@ -44,46 +43,76 @@ def log_trade(stock, pnl, mode):
     update_pnl(mode, pnl)
 
 def save_positions(positions_list):
-    pd.DataFrame(positions_list).to_csv(DB_FILE, index=False)
+    expected_columns = ["Stock", "LTP", "Buy_Price", "Quantity", "Husband_Status", "H_Entry", "H_PnL_Rs", "Wife_Status", "W_Entry", "W_PnL_Rs"]
+    with open(DB_FILE, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=expected_columns)
+        writer.writeheader()
+        for row in positions_list:
+            normalized = {col: row.get(col, 0.0 if col.endswith(("Price", "PnL_Rs", "LTP")) else 0) for col in expected_columns}
+            writer.writerow(normalized)
+    return positions_list
+
 
 def get_advanced_metrics(watchlist):
-    # watchlist என்பது ஒரு லிஸ்ட் அல்லது டேட்டாஃப்ரேம் என்று வைத்துக்கொள்வோம்
-    # இப்போதைக்கு நாம் DB_FILE-ல் இருந்து டேட்டாவை வாசிப்போம்
     try:
-        df = pd.read_csv('positions_db.csv')
-        if not df.empty:
-            df['PnL_Rs'] = (df['LTP'] - df['Buy_Price']) * df['Quantity']
-            df['PnL_Percent'] = (df['PnL_Rs'] / (df['Buy_Price'] * df['Quantity'])) * 100
-            
-            return df[['Stock', 'PnL_Rs', 'PnL_Percent']] # இதைத்தான் dashboard.py எடுத்துக்கொள்ளும்
-        
+        with open(DB_FILE, "r", newline="") as f:
+            rows = list(csv.DictReader(f))
+        if not rows:
+            return []
+        for row in rows:
+            try:
+                row["LTP"] = float(row.get("LTP", 0))
+                row["Buy_Price"] = float(row.get("Buy_Price", 0))
+                row["Quantity"] = int(float(row.get("Quantity", 0)))
+            except Exception:
+                row["LTP"] = 0.0
+                row["Buy_Price"] = 0.0
+                row["Quantity"] = 0
+            row["PnL_Rs"] = (row["LTP"] - row["Buy_Price"]) * row["Quantity"]
+        return rows
     except Exception as e:
         print(f"Error in metrics calculation: {e}")
-        
-    return pd.DataFrame() # பிழை இருந்தால் காலி டேட்டா
+        return []
 
 # 5. மார்க்கெட் க்ளோஸ் டைம் செக் - Main Loop
+# 1. முதலில் get_ltp பங்க்ஷனைச் சரிபார்க்கவும் (இது விலையைத் தர வேண்டும்)
+def get_ltp(ticker):
+    prices = {
+        'RELIANCE': 1300.0, 'TCS': 2100.0, 'HDFCBANK': 800.0, 
+        'ICICIBANK': 1350.0, 'INFY': 1050.0, 'ITC': 290.0, 
+        'HINDUNILVR': 2150.0, 'LT': 4100.0, 'SBIN': 1000.0, 'BHARTIARTL': 1800.0
+    }
+    return prices.get(ticker, 100.0)
+
+# 2. main_loop-ஐ இப்படி மாற்றுங்கள்
 def main_loop():
-    print("--- 🚀 Algo Engine Online ---")
-    while True:  # இங்க லூப் கண்டிப்பா வேணும்!
+    while True:
         try:
-            print("Loop is running... Saving data to CSV...")
-            # டெஸ்டிங்க்காக டேட்டா
-            test_positions = [{"Stock": "RELIANCE", "LTP": 1323.0}]
-            save_positions(test_positions)
-            
-            # லாக் டெஸ்ட் (உங்களுக்கு தேவைப்பட்டால் மட்டும் இதை uncomment பண்ணுங்க)
-            # log_trade("RELIANCE", 500, "husband")
-            
-            time.sleep(10) # 10 வினாடி ஒருமுறை ரன் ஆகும்
+            positions_list = []
+            stocks = ["RELIANCE", "TCS", "HDFCBANK", "ICICIBANK", "INFY", "ITC", "HINDUNILVR", "LT", "SBIN", "BHARTIARTL"]
+
+            for ticker in stocks:
+                price = get_ltp(ticker)
+
+                stock_data = {
+                    'Stock': ticker,
+                    'LTP': price,
+                    'Buy_Price': 1000.0,
+                    'Quantity': 1,
+                    'Husband_Status': 'IDLE',
+                    'H_Entry': 0.0,
+                    'H_PnL_Rs': 0.0,
+                    'Wife_Status': 'IDLE',
+                    'W_Entry': 0.0,
+                    'W_PnL_Rs': 0.0
+                }
+                positions_list.append(stock_data)
+
+            save_positions(positions_list)
+            time.sleep(10)
         except Exception as e:
-            print(f"Error in loop: {e}")
+            print(f"Error: {e}")
             break
-            
+                        
 if __name__ == "__main__":
-    try:
-        main_loop()
-    except KeyboardInterrupt:
-        print("\nShutdown requested...exiting")
-    finally:
-        print("Engine stopped.")
+    main_loop()
