@@ -36,6 +36,79 @@ except ImportError:
 # --- 1. பேஜ் செட்டிங்ஸ் (Streamlit-ல் இதுதான் முதலில் இருக்க வேண்டும்) ---
 if st is not None:
     st.set_page_config(layout="wide")
+    st.markdown(
+        """
+        <style>
+        .hero-card {
+            background: linear-gradient(135deg, #0f172a, #1d4ed8, #7c3aed);
+            padding: 1.2rem 1.3rem;
+            border-radius: 18px;
+            margin-bottom: 1rem;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.25);
+        }
+        .hero-title {
+            font-size: 1.9rem;
+            font-weight: 800;
+            color: white;
+            margin: 0;
+        }
+        .hero-subtitle {
+            color: #e2e8f0;
+            font-size: 0.95rem;
+            margin-top: 0.25rem;
+        }
+        .status-pill {
+            display: inline-block;
+            padding: 0.38rem 0.8rem;
+            border-radius: 999px;
+            font-weight: 700;
+            margin-top: 0.6rem;
+            color: white;
+            background: linear-gradient(135deg, #0f766e, #14b8a6);
+        }
+        .status-pill.closed {
+            background: linear-gradient(135deg, #b45309, #f59e0b);
+        }
+        .sidebar-card {
+            background: linear-gradient(135deg, #f8fafc, #eff6ff);
+            border: 1px solid #bfdbfe;
+            border-radius: 14px;
+            padding: 0.8rem;
+            margin-bottom: 0.7rem;
+        }
+        .section-title {
+            color: #1d4ed8;
+            font-weight: 800;
+            margin-bottom: 0.4rem;
+        }
+        div[data-testid="stMetric"] {
+            background: white;
+            border: 1px solid #dbeafe;
+            border-radius: 12px;
+            padding: 0.6rem 0.75rem;
+            box-shadow: 0 3px 10px rgba(15, 23, 42, 0.06);
+        }
+        .stDataFrame th {
+            background: linear-gradient(135deg, #1d4ed8, #2563eb);
+            color: white !important;
+            font-weight: 800;
+            font-size: 0.92rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .stDataFrame td {
+            font-size: 0.9rem;
+        }
+        .stDataFrame table {
+            border-collapse: collapse;
+        }
+        .stDataFrame tr:hover {
+            background: #eff6ff;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 # --- 2. குளோபல் வேரியபிள்கள் ---
 DB_FILE = "positions_db.csv"
@@ -201,7 +274,15 @@ if st is None:
     print("Dashboard fallback: the engine data files were checked, but the UI cannot run in this environment.")
     sys.exit(0)
 
-st.title("🚀 PASSIVE HYBRID ALGO - V20.0 (PERMANENT PEAK MARGIN ENGINE)")
+st.markdown(
+    """
+    <div class="hero-card">
+        <div class="hero-title">🚀 PASSIVE HYBRID ALGO</div>
+        <div class="hero-subtitle">V20.0 · Permanent Peak Margin Engine</div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 if pytz is not None:
     ist = pytz.timezone('Asia/Kolkata')
@@ -212,9 +293,17 @@ else:
     today_str = datetime.now().strftime('%Y-%m-%d')
     current_now = global_dt.datetime.now().time()
 
-if current_now >= dtime(15, 15):
-    st.error("🚨 மதியம் 3:15 ஆகிவிட்டது! இன்றைய டிரேடிங் செஷன் முடிவடைந்தது.")
-    st.stop() 
+session_closed = current_now >= dtime(15, 15)
+if session_closed:
+    st.markdown(
+        "<div class='status-pill closed'>🛑 Session Closed · Open trades are shown as squared off</div>",
+        unsafe_allow_html=True,
+    )
+else:
+    st.markdown(
+        "<div class='status-pill'>⏳ Session Active · Live monitoring is on</div>",
+        unsafe_allow_html=True,
+    )
 
 # --- 5. Data Processing Engine ---
 existing_positions = load_positions_safe()
@@ -261,7 +350,12 @@ for ticker in WATCHLIST:
                     break
 
         # Husband Account
-        if algo["all_passed"] or past_pos:
+        if session_closed and past_pos:
+            h_entry = float(past_pos["entry_price"]) if past_pos and past_pos.get("entry_price") not in [None, ""] else day_open_price
+            pnl_pct = ((price - h_entry) / h_entry) * 100 if h_entry else 0.0
+            h_status, h_pnl_rs, h_pnl_pct_str = "🔒 SQ OFF", round((price - h_entry) * TRADE_QTY, 2), f"{round(pnl_pct, 2)}%"
+            total_h_pnl_rs += h_pnl_rs
+        elif algo["all_passed"] or past_pos:
             h_entry = past_pos["entry_price"] if past_pos else day_open_price
             pnl_pct = ((price - h_entry) / h_entry) * 100
             h_total += 1
@@ -283,10 +377,17 @@ for ticker in WATCHLIST:
                 new_saved_positions.append({"stock": stock_name, "entry_price": h_entry, "date": today_str})
                 total_live_margin_blocked += (h_entry * TRADE_QTY)
             total_h_pnl_rs += h_pnl_rs
+        elif session_closed:
+            h_status = "🛑 SESSION CLOSED"
         else: h_status = algo["fail_msg"]
 
         # Wife Account
-        if algo["wife_passed"]:
+        if session_closed and (past_pos or algo["wife_passed"]):
+            w_entry = float(past_pos["entry_price"]) if past_pos and past_pos.get("entry_price") not in [None, ""] else day_open_price
+            pnl_pct = ((price - w_entry) / w_entry) * 100 if w_entry else 0.0
+            w_status, w_pnl_rs, w_pnl_pct_str = "🔒 SQ OFF", round((price - w_entry) * TRADE_QTY, 2), f"{round(pnl_pct, 2)}%"
+            total_w_pnl_rs += w_pnl_rs
+        elif algo["wife_passed"]:
             w_entry = day_open_price
             pnl_pct = ((price - w_entry) / w_entry) * 100
             w_total += 1
@@ -312,6 +413,8 @@ for ticker in WATCHLIST:
                 w_status, w_pnl_rs, w_pnl_pct_str = f"⚡ DAY-TRADE BUY", round((price - w_entry) * TRADE_QTY, 2), f"{round(pnl_pct, 2)}%"
                 total_live_margin_blocked += ((w_entry * TRADE_QTY) / 5)
             total_w_pnl_rs += w_pnl_rs
+        elif session_closed:
+            w_status = "🛑 SESSION CLOSED"
         else:
             w_fails = [f for f in algo["fail_msg"].replace("IDLE (", "").replace(")", "").split(", ") if f not in ["C1", "C5", "C6", "C7"]]
             w_status = f"IDLE ({', '.join(w_fails)})" if w_fails and w_fails != [''] else algo["fail_msg"]
@@ -339,11 +442,11 @@ save_positions(new_saved_positions)
 save_funds(funds)
 
 # --- 7. Sidebar Display ---
-st.sidebar.markdown(f"## 💰 Live Automatic Tracker")
+st.sidebar.markdown("<div class='sidebar-card'><h3 style='margin:0;color:#1d4ed8;'>💰 Live Automatic Tracker</h3></div>", unsafe_allow_html=True)
 st.sidebar.metric("ஆரம்ப மூலதனம் (Initial Capital)", f"₹ {original_capital:,.2f}")
 st.sidebar.metric("கைவசம் உள்ள நிகர தொகை (Available Funds)", f"₹ {realtime_available_funds:,.2f}")
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 📊 Today's Real Margin Status")
+st.sidebar.markdown("<div class='sidebar-card'><h4 style='margin:0;color:#0f766e;'>📊 Today's Real Margin Status</h4></div>", unsafe_allow_html=True)
 st.sidebar.error(f"**உண்மையான மொத்த முதலீடு (Peak Margin):** ₹ {saved_peak_margin:,.2f}")
 st.sidebar.warning(f"**தற்போது லைவ்வில் உள்ள மார்ஜின்:** ₹ {total_live_margin_blocked:,.2f}")
 st.sidebar.info(f"**இன்றைய புக் செய்யப்பட்ட லாபம்:** ₹ {total_realized_pnl_today:,.2f}")
@@ -352,7 +455,8 @@ st.sidebar.info(f"**இன்றைய புக் செய்யப்பட�
 tab1, tab2 = st.tabs(["📈 Active Positions", "🔍 Stock Analysis"])
 
 with tab1:
-    st.write("### Active Algo Engine is monitoring...")
+    st.markdown("<div class='section-title'>📈 Active Positions</div>", unsafe_allow_html=True)
+    st.write("Active Algo Engine is monitoring...")
     df = report_data
     st.dataframe(df, width="stretch", hide_index=True)
 
@@ -387,7 +491,7 @@ with tab1:
         """)
 
 with tab2:
-    st.subheader("📊 Fundamental & Technical Analysis")
+    st.markdown("<div class='section-title'>📊 Fundamental & Technical Analysis</div>", unsafe_allow_html=True)
     df_metrics = get_advanced_metrics(WATCHLIST)
     if df_metrics:
         metrics_chart = build_metrics_chart_data(df_metrics)
