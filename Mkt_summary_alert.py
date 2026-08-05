@@ -7,7 +7,7 @@ import sys
 import yfinance as yf
 
 # துல்லியமான இந்திய நேரம் (IST) எடுக்க:
-ist_time = datetime.now(ZoneInfo("Asia/Kolkata"))
+ist_time = datetime.now(pytz.timezone('Asia/Kolkata'))
 current_time = ist_time.strftime('%d-%b-%Y | %I:%M %p')
 
 # GitHub Secrets
