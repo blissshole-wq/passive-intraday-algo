@@ -2,10 +2,16 @@ import sys
 from datetime import datetime
 import requests
 import yfinance as yf
+import os
+from datetime import datetime
+import pytz
 
-# Telegram Credentials
-TOKEN = "8808327706:AAGamqaWXerHYJ8Ioq0wO7uP4r-DbFTSBcU"
-CHAT_ID = "6114756103"
+ist = pytz.timezone('Asia/Kolkata')
+current_time = datetime.now(ist).strftime('%d-%b-%Y | %I:%M %p')
+
+# GitHub Secrets-ல் கொடுத்த பெயர்களை இங்கே கொடுக்கவும்
+TOKEN = os.getenv("SUMMARY_BOT_TOKEN")
+CHAT_ID = os.getenv("SUMMARY_CHAT_ID")
 
 WATCHLIST = [
     "ADANIENT.NS", "ADANIPORTS.NS", "APOLLOHOSP.NS", "ASIANPAINT.NS", "AXISBANK.NS",
@@ -183,7 +189,7 @@ def send_evening_alert():
         if watchlist_data:
             msg += f"📋 *Watchlist பங்குகள் நிலவரம்:*\n{watchlist_data}\n\n"
 
-        msg += "✨ *இன்றைய வர்த்தக நாள் இனிதே நிறைவுற்றது!*"
+        msg += "✨ *இன்றைய வர்த்தக நாள் இனிதே நிறைவுற்றது*!"
 
         send_telegram_msg(msg)
     except Exception as e:
