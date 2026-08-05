@@ -9,8 +9,7 @@ import yfinance as yf
 
 # இந்திய நேரத்தை (IST) துல்லியமாக எடுக்க:
 ist_timezone = pytz.timezone('Asia/Kolkata')
-ist_time = datetime.now(ist_timezone)
-current_time = ist_time.strftime('%d-%b-%Y | %I:%M %p')
+current_time = datetime.now(ist_timezone).strftime('%d-%b-%Y | %I:%M %p')
 
 # GitHub Secrets
 TOKEN = os.getenv("SUMMARY_BOT_TOKEN")
@@ -136,7 +135,7 @@ def send_morning_alert():
 
         msg = (
             f"🌅 *காலை சர்வதேச சந்தை அறிக்கை (10:30 AM)*\n"
-            f"📆 *நேரம்:* {today}\n\n"
+            f"🗓️ *நேரம்:* {current_time}\n\n"
             f"🌍 *உலகளாவிய காரணிகள் (Global Macro):*\n"
             f"• *Gold (Comex):* ${gold_price:.2f}\n"
             f"• *Brent Crude Oil:* ${oil_price:.2f}\n"
@@ -179,7 +178,7 @@ def send_evening_alert():
 
         msg = (
             f"🌆 *மாலை சந்தை நிறைவு அறிக்கை (4:00 PM Summary)*\n"
-            f"📆 *நேரம்:* {current_time}\n"
+            f"🗓️ *நேரம்:* {current_time}\n\n"
             f"📊 *இந்திய சந்தை முடிவு (Indian Market Closing):*\n"
             f"• *Nifty 50:* {nifty_price:.2f} ({nifty_emoji} {nifty_pct:+.2f}%)\n"
             f"• *Sensex:* {sensex_price:.2f} ({sensex_emoji} {sensex_pct:+.2f}%)\n\n"
