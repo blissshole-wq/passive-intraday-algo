@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import pytz
 import requests
@@ -7,9 +7,9 @@ import yfinance as yf
 
 
 
-# இந்திய நேரத்தை (IST) துல்லியமாக எடுக்க:
-ist_timezone = pytz.timezone('Asia/Kolkata')
-today = datetime.now().strftime("%d-%b-%Y | %I:%M %p")
+# GitHub-ன் UTC நேரத்துடன் சரியாக 5 மணி 30 நிமிடத்தைக் கூட்டிக் கொள்ள:
+ist_time = datetime.utcnow() + timedelta(hours=5, minutes=30)
+current_time = ist_time.strftime('%d-%b-%Y | %I:%M %p')
 
 # GitHub Secrets
 TOKEN = os.getenv("SUMMARY_BOT_TOKEN")
@@ -113,7 +113,7 @@ def analyze_watchlist():
 def send_morning_alert():
     print("🌅 Sending Morning Alert...")
     try:
-        today = datetime.now().strftime("%d-%b-%Y | %I:%M %p")
+        current_time = ist_time.strftime('%d-%b-%Y | %I:%M %p')
         
         gold = yf.Ticker("GC=F").history(period="2d")
         oil = yf.Ticker("BZ=F").history(period="2d")
@@ -151,7 +151,7 @@ def send_morning_alert():
 def send_evening_alert():
     print("🌆 Sending Evening Alert...")
     try:
-        today = datetime.now().strftime("%d-%b-%Y | %I:%M %p")
+        current_time = ist_time.strftime('%d-%b-%Y | %I:%M %p')
         
         gold = yf.Ticker("GC=F").history(period="2d")
         oil = yf.Ticker("BZ=F").history(period="2d")
