@@ -1,15 +1,14 @@
-import sys
-from datetime import datetime
-import requests
-import yfinance as yf
+from datetime import datetime, timedelta
 import os
-from datetime import datetime
 import pytz
+import requests
+import sys
+import yfinance as yf
 
-ist = pytz.timezone('Asia/Kolkata')
-current_time = datetime.now(ist).strftime('%d-%b-%Y | %I:%M %p')
+# துல்லியமான இந்திய நேரம் (IST) எடுக்க:
+current_time = (datetime.utcnow() + timedelta(hours=5, minutes=30)).strftime('%d-%b-%Y | %I:%M %p')
 
-# GitHub Secrets-ல் கொடுத்த பெயர்களை இங்கே கொடுக்கவும்
+# GitHub Secrets
 TOKEN = os.getenv("SUMMARY_BOT_TOKEN")
 CHAT_ID = os.getenv("SUMMARY_CHAT_ID")
 
