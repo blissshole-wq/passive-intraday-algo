@@ -9,7 +9,7 @@ import yfinance as yf
 
 # இந்திய நேரத்தை (IST) துல்லியமாக எடுக்க:
 ist_timezone = pytz.timezone('Asia/Kolkata')
-current_time = datetime.now(ist_timezone).strftime('%d-%b-%Y | %I:%M %p')
+current_time = datetime.now().strftime("%d-%b-%Y | %I:%M %p")
 
 # GitHub Secrets
 TOKEN = os.getenv("SUMMARY_BOT_TOKEN")
