@@ -1,14 +1,15 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 import os
 import pytz
 import requests
 import sys
 import yfinance as yf
 
+# IST நேர மண்டலத்தை அமைத்தல்
+ist_timezone = pytz.timezone('Asia/Kolkata')
 
-
-# GitHub-ன் UTC நேரத்துடன் சரியாக 5 மணி 30 நிமிடத்தைக் கூட்டிக் கொள்ள:
-ist_time = datetime.utcnow() + timedelta(hours=5, minutes=30)
+# தற்போதைய IST நேரத்தை பெறுதல்
+ist_time = datetime.now(ist_timezone)
 current_time = ist_time.strftime('%d-%b-%Y | %I:%M %p')
 
 # GitHub Secrets
