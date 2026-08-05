@@ -176,7 +176,7 @@ def send_evening_alert():
 
         msg = (
             f"🌆 *மாலை சந்தை நிறைவு அறிக்கை (4:00 PM Summary)*\n"
-            f"📆 *நேரம்:* {today}\n\n"
+            f"📆 *நேரம்:* {current_time}\n"
             f"📊 *இந்திய சந்தை முடிவு (Indian Market Closing):*\n"
             f"• *Nifty 50:* {nifty_price:.2f} ({nifty_emoji} {nifty_pct:+.2f}%)\n"
             f"• *Sensex:* {sensex_price:.2f} ({sensex_emoji} {sensex_pct:+.2f}%)\n\n"
