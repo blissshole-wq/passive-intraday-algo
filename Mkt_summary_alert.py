@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 import os
 import pytz
 import requests
@@ -6,7 +7,7 @@ import sys
 import yfinance as yf
 
 # துல்லியமான இந்திய நேரம் (IST) எடுக்க:
-current_time = (datetime.utcnow() + timedelta(hours=5, minutes=30)).strftime('%d-%b-%Y | %I:%M %p')
+current_time = datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%d-%b-%Y | %I:%M %p')
 
 # GitHub Secrets
 TOKEN = os.getenv("SUMMARY_BOT_TOKEN")
