@@ -1,0 +1,59 @@
+import sys
+import asyncio
+import streamlit as st
+import yfinance as yf
+import pandas_ta as ta
+import pandas as pd
+import pytz
+import os
+import json
+import time
+from datetime import datetime, time as dtime
+
+# --- அட்வான்ஸ்டு அனலிட்டிக்ஸ் பங்க்ஷன் ---
+@st.cache_data(ttl=3600)
+def get_advanced_metrics(stocks):
+    data_list = []
+    for ticker in stocks:
+        stock = yf.Ticker(ticker)
+        hist = stock.history(period="6mo")
+        info = stock.info
+        rsi_val = ta.rsi(hist['Close'], length=14)
+        rsi = rsi_val.iloc[-1] if not rsi_val.empty else 0
+        
+        data_list.append({
+            "Ticker": ticker.replace(".NS", ""),
+            "Price": round(hist['Close'].iloc[-1], 2),
+            "RSI": round(rsi, 2),
+            "P/E Ratio": info.get('trailingPE', 'N/A'),
+            "ROE": f"{round(info.get('returnOnEquity', 0) * 100, 2)}%" if info.get('returnOnEquity') else 'N/A',
+            "Debt/Equity": info.get('debtToEquity', 'N/A'),
+            "Market Cap": f"{round(info.get('marketCap', 0) / 1e9, 2)} B"
+        })
+    return pd.DataFrame(data_list)
+
+# --- மெயின் டேஷ்போர்டு ---
+st.set_page_config(layout="wide")
+st.title("🚀 PASSIVE HYBRID ALGO - V20.0 (PERMANENT PEAK MARGIN ENGINE)")
+
+# Tabs கிரியேட் பண்ணுதல்
+tab1, tab2 = st.tabs(["📈 Active Positions", "🔍 Stock Analysis"])
+
+with tab1:
+    # உங்க பழைய கோடு (Positions logic) இங்க வரும்
+    # (முன்பு இருந்த code logic-ஐ இங்கே வைக்கவும்)
+    st.write("Active Algo Engine is running...")
+
+with tab2:
+    st.subheader("📊 Fundamental & Technical Analysis")
+    WATCHLIST = ["RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", "ITC.NS", 
+                 "HINDUNILVR.NS", "LT.NS", "SBIN.NS", "BHARTIARTL.NS"]
+    
+    df_metrics = get_advanced_metrics(WATCHLIST)
+    st.dataframe(df_metrics, use_container_width=True)
+
+# ஆட்டோ ரீஃப்ரெஷ் லாஜிக்
+if 'last_refresh' not in st.session_state: st.session_state.last_refresh = time.time()
+if time.time() - st.session_state.last_refresh > 60:
+    st.session_state.last_refresh = time.time()
+    st.rerun()

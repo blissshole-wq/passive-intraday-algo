@@ -1,0 +1,11 @@
+stages:
+  - run
+
+run_algo:
+  stage: run
+  image: python:3.9
+  script:
+    - pip install -r requirements.txt
+    - python main.py
+  only:
+    - main
