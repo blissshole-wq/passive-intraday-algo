@@ -1,19 +1,14 @@
-name: Market Summary Alert
+name: Summary Alert
 
 on:
   schedule:
-    # IST 10:30 AM = UTC 5:00 AM (Morning Alert)
-    - cron: '0 5 * * 1-5'
-    # IST 4:00 PM = UTC 10:30 AM (Evening Alert)
-    - cron: '30 10 * * 1-5'
-  
-  # Manual trigger for testing
+    - cron: '0 5 * * 1-5'      
+    - cron: '30 10 * * 1-5'    
   workflow_dispatch:
 
 jobs:
   run-alert:
     runs-on: ubuntu-latest
-    
     steps:
       - uses: actions/checkout@v4
       
@@ -24,16 +19,18 @@ jobs:
       - name: Install Dependencies
         run: |
           pip install --upgrade pip
-          pip install requests yfinance certifi pytz
+          pip install requests yfinance
       
-      - name: Run Morning Alert (10:30 AM IST)
+      - name: Morning Alert
         if: github.event.schedule == '0 5 * * 1-5' || github.event_name == 'workflow_dispatch'
-        run: |
-          echo "🚀 Morning Alert at 10:30 AM IST"
-          python Mkt_summary_alert.py morning
+        env:
+          SUMMARY_BOT_TOKEN: ${{ secrets.SUMMARY_BOT_TOKEN }}
+          SUMMARY_CHAT_ID: ${{ secrets.SUMMARY_CHAT_ID }}
+        run: python summary_bot.py morning
       
-      - name: Run Evening Alert (4:00 PM IST)
-        if: github.event.schedule == '30 10 * * 1-5' || github.event_name == 'workflow_dispatch'
-        run: |
-          echo "🚀 Evening Alert at 4:00 PM IST"
-          python Mkt_summary_alert.py evening
+      - name: Evening Alert
+        if: github.event.schedule == '30 10 * * 1-5'
+        env:
+          SUMMARY_BOT_TOKEN: ${{ secrets.SUMMARY_BOT_TOKEN }}
+          SUMMARY_CHAT_ID: ${{ secrets.SUMMARY_CHAT_ID }}
+        run: python summary_bot.py evening
