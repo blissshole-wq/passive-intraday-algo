@@ -2,22 +2,30 @@ name: Market Summary Alert
 
 on:
   schedule:
-    - cron: '0 4 * * 1-5'    # IST 9:30 AM
-    - cron: '30 9 * * 1-5'   # IST 3:00 PM
-    - cron: '0 10 * * 1-5'   # IST 3:30 PM
-    - cron: '30 10 * * 1-5'  # IST 4:00 PM
+    - cron: '0 4 * * 1-5'    
+    - cron: '30 9 * * 1-5'   
+    - cron: '0 10 * * 1-5'   
+    - cron: '30 10 * * 1-5'  
   workflow_dispatch:
 
 jobs:
   run-alert:
     runs-on: ubuntu-latest
+    
+    # ✅ Add this environment variable
+    env:
+      TZ: 'Asia/Kolkata'
+    
     steps:
       - uses: actions/checkout@v4
       
+      # ✅ Set system timezone
       - name: Set timezone to IST
         run: |
           sudo timedatectl set-timezone Asia/Kolkata
-          echo "IST Time: $(date '+%d-%b-%Y | %I:%M %p')"
+          echo "System time: $(date)"
+          echo "IST time: $(date '+%d-%b-%Y | %I:%M %p')"
+          echo "IST_HOUR=$(date +%H)" >> $GITHUB_ENV
       
       - uses: actions/setup-python@v5
         with:
@@ -28,14 +36,36 @@ jobs:
           pip install --upgrade pip
           pip install requests yfinance certifi pytz
       
+      - name: Debug Timezone
+        run: |
+          echo "=== Timezone Debug ==="
+          date
+          TZ='Asia/Kolkata' date
+          python -c "import datetime; import pytz; print(datetime.datetime.now(pytz.timezone('Asia/Kolkata')).strftime('%d-%b-%Y | %I:%M %p'))"
+      
       - name: Run Morning Alert
         if: ${{ github.event.schedule == '0 4 * * 1-5' || github.event.schedule == '30 9 * * 1-5' }}
         env:
           TZ: 'Asia/Kolkata'
-        run: python Mkt_summary_alert.py morning
+          PYTHONIOENCODING: utf-8
+        run: |
+          echo "Running morning alert at $(date '+%d-%b-%Y | %I:%M %p')"
+          python Mkt_summary_alert.py morning
       
       - name: Run Evening Alert
         if: ${{ github.event.schedule == '0 10 * * 1-5' || github.event.schedule == '30 10 * * 1-5' }}
         env:
           TZ: 'Asia/Kolkata'
-        run: python Mkt_summary_alert.py evening
+          PYTHONIOENCODING: utf-8
+        run: |
+          echo "Running evening alert at $(date '+%d-%b-%Y | %I:%M %p')"
+          python Mkt_summary_alert.py evening
+      
+      - name: Run Manual Trigger
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          TZ: 'Asia/Kolkata'
+          PYTHONIOENCODING: utf-8
+        run: |
+          echo "Manual trigger at $(date '+%d-%b-%Y | %I:%M %p')"
+          python Mkt_summary_alert.py morning
