@@ -7,8 +7,8 @@ import pytz
 import os
 
 # Telegram Credentials
-TOKEN = "8808327706:AAGamqaWXerHYJ8Ioq0wO7uP4r-DbFTSBcU"
-CHAT_ID = "6114756103"
+TOKEN = os.getenv("SUMMARY_BOT_TOKEN")      # For summary alerts
+CHAT_ID = os.getenv("SUMMARY_CHAT_ID")      # For summary alerts
 
 # ============================================
 # ✅ FORCE IST - ALWAYS USE UTC + 5:30
