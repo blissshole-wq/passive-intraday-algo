@@ -2,38 +2,37 @@ name: Market Summary Alert
 
 on:
   schedule:
-    # காலை 10:30 AM IST = 05:00 UTC (திங்கள் - வெள்ளி)
-    - cron: '0 5 * * 1-5'
-    # மாலை 4:00 PM IST = 10:30 UTC (திங்கள் - வெள்ளி)
+    - cron: '0 4 * * 1-5'
+    - cron: '30 9 * * 1-5'
+    - cron: '0 10 * * 1-5'
     - cron: '30 10 * * 1-5'
-  
   workflow_dispatch:
 
 jobs:
   run-alert:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      
+      - name: Set timezone to IST
+        run: |
+          sudo timedatectl set-timezone Asia/Kolkata
+          echo "IST_TIME=$(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+      
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-
+      
       - name: Install Dependencies
         run: |
           pip install --upgrade pip
-          pip install requests yfinance certifi
-
-      - name: Run Alert based on Time
+          pip install requests yfinance certifi pytz
+      
+      - name: Run Market Alert
         env:
           SUMMARY_BOT_TOKEN: ${{ secrets.SUMMARY_BOT_TOKEN }}
           SUMMARY_CHAT_ID: ${{ secrets.SUMMARY_CHAT_ID }}
         run: |
-          CURRENT_HOUR=$(date -u +%H)
-          if [ "$CURRENT_HOUR" -lt "08" ]; then
-            python Mkt_summary_alert.py morning
-          else
-            python Mkt_summary_alert.py evening
-          fi
+          export TZ='Asia/Kolkata'
+          echo "Current IST: $(date '+%d-%b-%Y | %I:%M %p')"
+          python Mkt_summary_alert.py
