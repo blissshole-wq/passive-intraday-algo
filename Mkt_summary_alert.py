@@ -11,18 +11,15 @@ TOKEN = "8808327706:AAGamqaWXerHYJ8Ioq0wO7uP4r-DbFTSBcU"
 CHAT_ID = "6114756103"
 
 # ============================================
-# ✅ FORCE IST - Convert UTC to IST
+# ✅ FORCE IST - ALWAYS USE UTC + 5:30
 # ============================================
 def get_ist_time():
-    """Get IST time by converting UTC to IST"""
-    # Get current UTC time
+    """Get IST time - ALWAYS UTC + 5:30"""
     utc_now = datetime.datetime.utcnow()
-    # Add 5 hours 30 minutes
     ist_time = utc_now + datetime.timedelta(hours=5, minutes=30)
     return ist_time
 
 def get_ist_time_str():
-    """Get formatted IST time string"""
     ist_time = get_ist_time()
     return ist_time.strftime('%d-%b-%Y | %I:%M %p')
 
@@ -121,7 +118,7 @@ def analyze_watchlist():
 def send_morning_alert():
     print("🌅 Sending Morning Alert...")
     try:
-        # ✅ Use IST time (UTC + 5:30)
+        # ✅ FORCE IST - UTC + 5:30
         today = get_ist_time_str()
         print(f"📅 IST Time: {today}")
         
@@ -167,7 +164,7 @@ def send_morning_alert():
 def send_evening_alert():
     print("🌆 Sending Evening Alert...")
     try:
-        # ✅ Use IST time (UTC + 5:30)
+        # ✅ FORCE IST - UTC + 5:30
         today = get_ist_time_str()
         print(f"📅 IST Time: {today}")
         
@@ -219,8 +216,8 @@ def send_evening_alert():
 if __name__ == "__main__":
     print("=" * 60)
     print("🚀 Market Alert Bot")
-    print(f"🕐 UTC Time: {datetime.datetime.utcnow()}")
-    print(f"🕐 IST Time: {get_ist_time_str()}")
+    print(f"🕐 UTC: {datetime.datetime.utcnow()}")
+    print(f"🕐 IST: {get_ist_time_str()}")
     print("=" * 60)
     
     if len(sys.argv) > 1:
