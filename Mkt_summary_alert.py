@@ -6,33 +6,28 @@ import yfinance as yf
 import pytz
 import os
 
-# FORCE IST TIMEZONE
-os.environ['TZ'] = 'Asia/Kolkata'
-try:
-    time.tzset()
-except:
-    pass
-
 # Telegram Credentials
 TOKEN = "8808327706:AAGamqaWXerHYJ8Ioq0wO7uP4r-DbFTSBcU"
 CHAT_ID = "6114756103"
 
-# IST Timezone
-IST = pytz.timezone('Asia/Kolkata')
-
+# ============================================
+# ✅ FORCE IST - Convert UTC to IST
+# ============================================
 def get_ist_time():
-    try:
-        return datetime.datetime.now(IST)
-    except:
-        utc_now = datetime.datetime.utcnow()
-        return utc_now + datetime.timedelta(hours=5, minutes=30)
+    """Get IST time by converting UTC to IST"""
+    # Get current UTC time
+    utc_now = datetime.datetime.utcnow()
+    # Add 5 hours 30 minutes
+    ist_time = utc_now + datetime.timedelta(hours=5, minutes=30)
+    return ist_time
 
 def get_ist_time_str():
+    """Get formatted IST time string"""
     ist_time = get_ist_time()
     return ist_time.strftime('%d-%b-%Y | %I:%M %p')
 
 # ============================================
-# WATCHLIST - Nifty 50 Stocks
+# WATCHLIST
 # ============================================
 WATCHLIST = [
     "ADANIENT.NS", "ADANIPORTS.NS", "APOLLOHOSP.NS", "ASIANPAINT.NS", "AXISBANK.NS",
@@ -61,7 +56,6 @@ def send_telegram_msg(text, chat_id=CHAT_ID):
         print(f"Error sending msg: {e}")
 
 def get_ticker_data(symbol):
-    """Get current price and change % for a symbol"""
     try:
         ticker = yf.Ticker(symbol)
         df = ticker.history(period="2d")
@@ -79,16 +73,14 @@ def get_ticker_data(symbol):
     return "N/A"
 
 def analyze_watchlist():
-    """Get watchlist health scores"""
     msg = "📋 *WATCHLIST HEALTH MATRIX*\n━━━━━━━━━━━━━━━━━━━\n"
     count = 0
     
-    for symbol in WATCHLIST[:10]:  # First 10 stocks to avoid timeout
+    for symbol in WATCHLIST[:10]:
         try:
             stock = yf.Ticker(symbol)
             info = stock.info or {}
             
-            # Get fundamental data
             de_ratio = (info.get("debtToEquity") or 0) / 100
             roe = (info.get("returnOnEquity") or 0) * 100
             pe = info.get("trailingPE", 0) or 0
@@ -96,7 +88,6 @@ def analyze_watchlist():
             ocf = info.get("operatingCashflow") or 0
             net_income = info.get("netIncomeToCommon") or 0
             
-            # Calculate score
             score = 0
             if roe >= 15 and de_ratio < 0.5:
                 score += 25
@@ -107,7 +98,6 @@ def analyze_watchlist():
             if 0 < pe < 35:
                 score += 25
             
-            # Status
             if score >= 75:
                 status = "🟢 Excellent"
             elif score >= 50:
@@ -115,98 +105,27 @@ def analyze_watchlist():
             else:
                 status = "🔴 Weak"
             
-            # Price info
             price_info = get_ticker_data(symbol)
             name = symbol.replace('.NS', '').replace('.BO', '')
             
             msg += f"• *{name}:* ₹{price_info} | Score `{score}/100` ({status})\n"
             count += 1
             
-        except Exception as e:
+        except Exception:
             name = symbol.replace('.NS', '').replace('.BO', '')
             msg += f"• *{name}:* ⚠️ Data unavailable\n"
     
-    msg += f"\n📊 *Showing {count} stocks* (Limited to avoid timeout)"
-    msg += "\n💡 *Tip:* Use `/analyze STOCK` for detailed report"
+    msg += f"\n📊 *Showing {count} stocks*"
     return msg
-
-def analyze_stock(symbol):
-    """Detailed analysis for a single stock"""
-    try:
-        raw_symbol = symbol.strip().upper().replace(".NS", "").replace(".BO", "")
-        stock = yf.Ticker(f"{raw_symbol}.NS")
-        info = stock.info or {}
-        hist = stock.history(period="5d")
-        
-        if hist.empty:
-            return f"❌ *{raw_symbol}* data not found"
-        
-        current_price = hist["Close"].iloc[-1]
-        company_name = info.get("shortName") or info.get("longName") or raw_symbol
-        mcap = info.get("marketCap", 0) / 10**7 if info.get("marketCap") else 0
-        pe = info.get("trailingPE", 0) or 0
-        de_ratio = (info.get("debtToEquity") or 0) / 100
-        roe = (info.get("returnOnEquity") or 0) * 100
-        promoter_hold = (info.get("heldPercentInsiders") or 0) * 100
-        net_income = info.get("netIncomeToCommon", 0) or 0
-        operating_cf = info.get("operatingCashflow", 0) or 0
-        
-        # Calculate score
-        score = 0
-        insights = []
-        
-        if roe >= 15 and de_ratio < 0.5:
-            score += 25
-            insights.append("🟢 *Strong Efficiency:* High ROE (>15%) & Low Debt")
-        elif de_ratio > 1.5:
-            insights.append("🔴 *High Debt Risk:* D/E Ratio >1.5")
-        
-        if operating_cf > 0 and operating_cf >= net_income:
-            score += 25
-            insights.append("🟢 *Real Cash Profit:* Cash Flow >= Net Profit")
-        elif operating_cf > 0:
-            insights.append("🟡 *Paper Profit Warning:* OCF < Net Profit")
-        
-        if promoter_hold >= 40:
-            score += 25
-            insights.append(f"🟢 *Promoter Holding:* Good ({promoter_hold:.1f}%)")
-        
-        if 0 < pe < 35:
-            score += 25
-            insights.append(f"🟢 *Valuation:* Fair P/E ({pe:.1f})")
-        
-        if not insights:
-            insights.append("ℹ️ Real-time price fetched")
-        
-        macro = "🚀 *Rate Cut Impact:* POSITIVE" if de_ratio > 0.8 else "🛡️ *Rate Cut Impact:* STABLE"
-        
-        mcap_str = f"₹{mcap:,.0f} Cr" if mcap > 0 else "N/A"
-        pe_str = f"{pe:.2f}" if pe > 0 else "N/A"
-        de_str = f"{de_ratio:.2f}" if de_ratio > 0 else "N/A"
-        
-        report = (
-            f"📊 *DEEP MATRIX REPORT: {company_name}*\n"
-            f"━━━━━━━━━━━━━━━━━━━\n"
-            f"💵 *Price:* ₹{current_price:,.2f}\n"
-            f"🏢 *Market Cap:* {mcap_str}\n"
-            f"📊 *P/E:* {pe_str} | *D/E:* {de_str}\n"
-            f"📈 *ROE:* {roe:.2f}% | *Promoter:* {promoter_hold:.1f}%\n"
-            f"━━━━━━━━━━━━━━━━━━━\n"
-            f"🎯 *HEALTH SCORE:* `{score} / 100`\n\n"
-            f"📌 *INSIGHTS:*\n" + "\n".join([f"• {i}" for i in insights]) +
-            f"\n\n🌐 *PREDICTION:*\n• {macro}"
-        )
-        return report
-    except Exception as e:
-        return f"❌ Error analyzing {symbol}: {e}"
 
 def send_morning_alert():
     print("🌅 Sending Morning Alert...")
     try:
+        # ✅ Use IST time (UTC + 5:30)
         today = get_ist_time_str()
         print(f"📅 IST Time: {today}")
         
-        # Get market data
+        # Market data
         gold = yf.Ticker("GC=F").history(period="2d")
         oil = yf.Ticker("BZ=F").history(period="2d")
         usdinr = yf.Ticker("INR=X").history(period="2d")
@@ -225,8 +144,6 @@ def send_morning_alert():
         nifty_pct = ((nifty_price - nifty_prev) / nifty_prev) * 100 if nifty_prev else 0
         nifty_emoji = "🟢" if nifty_pct >= 0 else "🔴"
 
-        # ✅ Get watchlist data
-        print("⏳ Fetching watchlist data...")
         watchlist_data = analyze_watchlist()
 
         msg = (
@@ -250,10 +167,10 @@ def send_morning_alert():
 def send_evening_alert():
     print("🌆 Sending Evening Alert...")
     try:
+        # ✅ Use IST time (UTC + 5:30)
         today = get_ist_time_str()
         print(f"📅 IST Time: {today}")
         
-        # Get market data
         gold = yf.Ticker("GC=F").history(period="2d")
         oil = yf.Ticker("BZ=F").history(period="2d")
         usdinr = yf.Ticker("INR=X").history(period="2d")
@@ -275,8 +192,6 @@ def send_evening_alert():
         nifty_price, nifty_pct, nifty_emoji = get_data(nifty)
         sensex_price, sensex_pct, sensex_emoji = get_data(sensex)
 
-        # ✅ Get watchlist data
-        print("⏳ Fetching watchlist data...")
         watchlist_data = analyze_watchlist()
 
         msg = (
@@ -299,80 +214,13 @@ def send_evening_alert():
         print(f"❌ Error: {e}")
 
 # ============================================
-# TELEGRAM BOT COMMANDS
-# ============================================
-def handle_bot_commands():
-    print("🤖 Bot listening for commands...")
-    print(f"🕐 Current IST: {get_ist_time_str()}")
-    last_update_id = 0
-
-    while True:
-        try:
-            url = f"https://api.telegram.org/bot{TOKEN}/getUpdates?offset={last_update_id + 1}&timeout=10"
-            res = requests.get(url, timeout=15).json()
-
-            if not res.get("ok"):
-                time.sleep(5)
-                continue
-
-            for result in res.get("result", []):
-                last_update_id = result["update_id"]
-                message = result.get("message", {})
-                text = message.get("text", "").strip()
-                chat_id = message.get("chat", {}).get("id")
-
-                if not text or not chat_id:
-                    continue
-
-                if text == "/start":
-                    welcome = (
-                        "👋 *வணக்கம்! AI Market Assistant*\n\n"
-                        f"🕐 *IST:* {get_ist_time_str()}\n\n"
-                        "📌 *Commands:*\n"
-                        "• `/watchlist` - Health scores\n"
-                        "• `/analyze STOCK` - Detailed report\n"
-                        "• `/time` - Current IST\n"
-                        "• `/morning` - Morning alert\n"
-                        "• `/evening` - Evening alert"
-                    )
-                    send_telegram_msg(welcome, chat_id)
-
-                elif text == "/time":
-                    send_telegram_msg(f"🕐 *IST:* {get_ist_time_str()}", chat_id)
-
-                elif text == "/watchlist":
-                    send_telegram_msg("⏳ Scanning watchlist...", chat_id)
-                    report = analyze_watchlist()
-                    send_telegram_msg(report, chat_id)
-
-                elif text.startswith("/analyze"):
-                    parts = text.split()
-                    if len(parts) > 1:
-                        stock = parts[1]
-                        send_telegram_msg(f"⏳ Analyzing *{stock}*...", chat_id)
-                        report = analyze_stock(stock)
-                        send_telegram_msg(report, chat_id)
-                    else:
-                        send_telegram_msg("⚠️ Usage: `/analyze RELIANCE`", chat_id)
-
-                elif text == "/morning":
-                    send_morning_alert()
-
-                elif text == "/evening":
-                    send_evening_alert()
-
-        except Exception as e:
-            print(f"⚠️ Error: {e}")
-            time.sleep(3)
-        time.sleep(1)
-
-# ============================================
 # MAIN
 # ============================================
 if __name__ == "__main__":
     print("=" * 60)
     print("🚀 Market Alert Bot")
-    print(f"🕐 IST: {get_ist_time_str()}")
+    print(f"🕐 UTC Time: {datetime.datetime.utcnow()}")
+    print(f"🕐 IST Time: {get_ist_time_str()}")
     print("=" * 60)
     
     if len(sys.argv) > 1:
@@ -384,4 +232,4 @@ if __name__ == "__main__":
         else:
             print(f"❌ Unknown mode: {mode}")
     else:
-        handle_bot_commands()
+        print("Usage: python Mkt_summary_alert.py [morning|evening]")
