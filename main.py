@@ -3,13 +3,14 @@ import json
 import aiohttp
 from groq import Groq
 from telethon import TelegramClient, events
+from telethon.sessions import StringSession
 import config
 
 # Groq Client செட் அப்
 groq_client = Groq(api_key=config.GROQ_API_KEY)
 
 # Telegram Client
-client = TelegramClient('auto_forward_session', config.API_ID, config.API_HASH)
+client = TelegramClient(StringSession(config.STRING_SESSION), config.API_ID, config.API_HASH)
 
 async def process_with_ai(text):
     prompt = f"""
