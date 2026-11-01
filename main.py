@@ -120,7 +120,16 @@ async def handler(event):
 async def main():
     await client.start()
     print("🚀 Bot started! Listening to sources...")
-    await client.run_until_disconnected()
+    
+    # --- டிபக் செய்யும் பகுதி ---
+    print("--- சேனல்களை ஆய்வு செய்கிறது ---")
+    for channel in config.SOURCE_CHANNEL:
+        try:
+            # டெலிகிராம் அந்த சேனலை கண்டுபிடிக்க முயற்சிக்கிறது
+            entity = await client.get_entity(channel)
+            print(f"✅ கிடைத்தது: {entity.title} (ID: {channel})")
+        except Exception as e:
+            print(f"❌ கிடைக்கவில்லை: {channel} - Error: {e}")
+    print("---------------------------------")
 
-if __name__ == '__main__':
-    asyncio.run(main())
+    await client.run_until_disconnected()
