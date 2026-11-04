@@ -1,4 +1,4 @@
+telethon
+groq
+aiohttp
 flask
-requests
-yfinance
-pytz
