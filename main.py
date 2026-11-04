@@ -127,29 +127,26 @@ async def handler(event):
 # 3. Main Execution
 # ==========================================
 async def main():
-    # முதலில் டெலிகிராம் கிளையண்டை ஸ்டார்ட் செய்ய வேண்டும்
-    await client.start()
-    print("🚀 Bot started! Listening to sources...")
+    print("⏳ டெலிகிராமுடன் இணைய முயற்சிக்கிறது...", flush=True)
     
-    # --- டிபக் செய்யும் பகுதி (சேனல்கள் சரியாக இருக்கிறதா?) ---
-    print("--- சேனல்களை ஆய்வு செய்கிறது ---")
+    # start()க்கு பதிலாக connect() பயன்படுத்துகிறோம் (ஹேங் ஆகாமல் இருக்க)
+    await client.connect()
+    
+    # செஷன் சரியானதா என்று செக் செய்கிறோம்
+    if not await client.is_user_authorized():
+        print("❌ ERROR: STRING_SESSION செல்லாதது (Invalid) அல்லது API_ID/HASH தவறு!", flush=True)
+        return  # லாகின் ஆகவில்லை என்றால் இங்கேயே நிறுத்திவிடும்
+        
+    print("🚀 Bot started! Listening to sources...", flush=True)
+    
+    # --- டிபக் செய்யும் பகுதி ---
+    print("--- சேனல்களை ஆய்வு செய்கிறது ---", flush=True)
     for channel in config.SOURCE_CHANNEL:
         try:
             entity = await client.get_entity(channel)
-            print(f"✅ கிடைத்தது: {entity.title} (ID: {channel})")
+            print(f"✅ கிடைத்தது: {entity.title} (ID: {channel})", flush=True)
         except Exception as e:
-            print(f"❌ கிடைக்கவில்லை: {channel} - Error: {e}")
-    print("---------------------------------")
+            print(f"❌ கிடைக்கவில்லை: {channel} - Error: {e}", flush=True)
+    print("---------------------------------", flush=True)
 
-    # டெலிகிராம் மெசேஜ்களைக் கேட்க ஆரம்பிக்கும்
     await client.run_until_disconnected()
-
-if __name__ == '__main__':
-    # Flask-ஐ தனி த்ரெட்டில் (Background-ல்) ரன் செய்கிறோம் (UptimeRobot-க்காக)
-    flask_thread = threading.Thread(target=run_flask)
-    flask_thread.daemon = True
-    flask_thread.start()
-    print("✅ Flask Server started on port 10000")
-
-    # பிரதான த்ரெட்டில் டெலிகிராம் பாட்டை ரன் செய்கிறோம்
-    asyncio.run(main())
