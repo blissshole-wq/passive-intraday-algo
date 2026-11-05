@@ -26,33 +26,42 @@ client = TelegramClient(StringSession(config.STRING_SESSION), config.API_ID, con
 
 async def process_with_ai(text):
     prompt = f"""
-    You are an expert news editor, translator, and categorizer. Analyze the following text:
-    "{text}"
+    Analyze the following text and provide the output in valid JSON format.
+    Text: "{text}"
     
-    Task 1: Categorize this text into exactly one of these categories: ["news", "tips", "updates", "general"].
-    Task 2: Create a highly specific summary in Tamil (around 50 words). 
-    CRITICAL RULE: You MUST include the names of the main entities. If facts/lists are present, use bullet points.
+    Follow these rules strictly:
+    1. Category: Choose exactly one from ["news", "tips", "updates", "general"].
+    2. Summary: Provide a summary in Tamil (under 50 words). Use plain text only. DO NOT use markdown symbols like *, -, or # inside the summary.
+    3. Include main entities (Company names, People) in the summary.
     
-    Return the response STRICTLY as a JSON object with these keys:
-    "category": "news", 
-    "tamil_summary": "சுருக்கம் இங்கே..."
+    Output JSON format:
+    {{
+        "category": "news",
+        "tamil_summary": "உங்கள் சுருக்கம் இங்கே..."
+    }}
     """
     try:
         chat_completion = groq_client.chat.completions.create(
             messages=[
-                {"role": "system", "content": "You are a helpful assistant that outputs only valid JSON."},
+                {"role": "system", "content": "You are a JSON generator. Output only valid JSON."},
                 {"role": "user", "content": prompt}
             ],
             model="openai/gpt-oss-20b",
             response_format={"type": "json_object"},
-            max_tokens=1000 
+            max_tokens=1000,
+            temperature=0.3 # AI கற்பனை செய்யாமல், நேரடியாக பதில் தர இது உதவும்
         )
+        
         raw_content = chat_completion.choices[0].message.content
+        # சில நேரங்களில் AI தேவையில்லாத குறியீடுகளைச் சேர்த்துவிடும், அதை நீக்குகிறோம்
         raw_content = raw_content.replace("```json", "").replace("```", "").strip()
+        
         return json.loads(raw_content)
+        
     except Exception as e:
         print(f"⚠️ Groq AI Error: {e}", flush=True)
-        return None
+        # AI எரர் கொடுத்தால், அந்த மெசேஜை ஸ்கிப் செய்துவிட்டு அடுத்ததற்குப் போகச் சொல்கிறோம்
+        return None 
 
 async def send_via_bot(chat_id, text):
     url = f"https://api.telegram.org/bot{config.BOT_TOKEN}/sendMessage"
