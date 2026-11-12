@@ -4,15 +4,16 @@ import pandas_ta_classic as ta
 import requests
 import os
 
-# --- 1. டெலிகிராம் அலர்ட் ஃபங்க்ஷன் ---
 def send_telegram_alert(message):
-    bot_token = os.environ.get("BOT_TOKEN") 
+    bot_token = os.environ.get("BOT_TOKEN")
     chat_id = os.environ.get("CHAT_ID")
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text={message}&parse_mode=Markdown"
     try:
-        requests.get(url)
+        response = requests.get(url)
+        # இந்த வரியை தான் நான் புதுசா சேர்த்திருக்கேன். இது டெலிகிராம் என்ன சொல்கிறதுன்னு அச்சிடும்.
+        print("Telegram Response:", response.text) 
     except Exception as e:
-        print("Telegram Error:", e)
+        print("Telegram Network Error:", e)
 
 # --- 2. ஃபண்டமெண்டல் ஸ்கேனர் (நியூஸ்/ரிசல்ட்) ---
 def get_fundamental_picks():
