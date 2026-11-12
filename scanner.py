@@ -66,6 +66,10 @@ def run_confluence_scanner():
         print("Alerts sent to Telegram!")
     else:
         print("No Confluence setups found today.")
-
+        
 if __name__ == "__main__":
+    # 1. டெலிகிராம் வேலை செய்யுதா என்று டெஸ்ட் பண்ண மெசேஜ்
+    send_telegram_alert("🤖 Test Message: Scanner is working fine!")
+    
+    # 2. உண்மையான ஸ்கேனர் கோட்
     run_confluence_scanner()
