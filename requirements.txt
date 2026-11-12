@@ -2,3 +2,8 @@ telethon
 groq
 aiohttp
 flask
+yfinance
+pandas
+pandas-ta-classic
+requests
+python-telegram-bot
