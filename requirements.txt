@@ -1,9 +1,2 @@
-telethon
-groq
-aiohttp
-flask
-yfinance
-pandas
-pandas-ta-classic
-requests
-python-telegram-bot
+requests==2.31.0
+pytz==2023.3
