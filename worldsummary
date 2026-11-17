@@ -2,10 +2,8 @@ import requests
 
 def send_telegram_message(message):
     # உங்கள் BotFather தந்த Token-ஐ இங்கே பதிவிடவும்
-    TOKEN = "8844114153:AAH2ckVvRNm42bkbo0_c2oipsUjuauL4wr4"
-    # உங்கள் Chat ID-ஐ இங்கே பதிவிடவும்
-    CHAT_ID = "6114756103"
-    
+    bot_token = os.environ.get("BOT_TOKEN") 
+    chat_id = os.environ.get("CHAT_ID")    
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     payload = {
         "chat_id": CHAT_ID,
