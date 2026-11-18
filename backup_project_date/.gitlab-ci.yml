@@ -1,8 +1,0 @@
-stages:
-  - build
-
-run_algo:
-  stage: build
-  image: python:3.9
-  script:
-    - python main.py
